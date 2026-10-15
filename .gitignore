@@ -1,0 +1,40 @@
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# Local audio and recordings
+*.wav
+*.mp3
+*.webm
+*.m4a
+*.ogg
+recordings/
+uploads/
+temp/
+
+# Test artifacts
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
