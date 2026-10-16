@@ -1,0 +1,57 @@
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f6f8;
+    color: #222;
+}
+
+main {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 26px;
+}
+
+#status {
+    color: #555;
+    margin: 20px 0;
+}
+
+#record-button {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+    background-color: #3569c8;
+    color: white;
+    cursor: pointer;
+}
+
+#record-button:active {
+    background-color: #254f99;
+}
+
+#audio-playback {
+    width: 100%;
+    margin-top: 20px;
+}
+
+section {
+    margin-top: 28px;
+}
+
+#transcription {
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    min-height: 100px;
+}
