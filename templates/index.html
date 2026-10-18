@@ -3,27 +3,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Медицинские заметки</title>
+    <meta name="theme-color" content="#f4f7f5">
+    <title>Zametki — медицинские заметки</title>
     <link
         rel="stylesheet"
         href="{{ url_for('static', path='css/style.css') }}"
     >
 </head>
 <body>
-    <main>
-        <h1>Медицинские заметки</h1>
+    <main class="app">
+        <header class="app-header">
+            <a class="brand" href="/" aria-label="Zametki — главная">
+                <span class="brand-mark" aria-hidden="true">Z</span>
+                <span class="brand-name">zametki</span>
+            </a>
 
-        <p id="status">Запись не начата</p>
+            <div class="storage-indicator">
+                <span class="storage-dot" aria-hidden="true"></span>
+                Локальный черновик
+            </div>
+        </header>
 
-        <button id="record-button">Начать запись</button>
-        <audio id="audio-playback" controls hidden></audio>
-
-        <section>
-            <h2>Распознанный текст</h2>
-            <div id="transcription">Здесь появится распознанный текст</div>
+        <section class="page-intro">
+            <div>
+                <p class="eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО ВРАЧА</p>
+                <h1>Медицинские заметки</h1>
+                <p class="page-description">
+                    Запись разговора, транскрипция и подготовка заметки
+                    в одном месте
+                </p>
+            </div>
         </section>
+
+        <section class="visit-card card" aria-labelledby="visit-title">
+            <div class="visit-info">
+                <div class="section-icon" aria-hidden="true">01</div>
+                <div>
+                    <p class="eyebrow">ТЕКУЩАЯ РАБОТА</p>
+                    <h2 id="visit-title">Приём</h2>
+                    <p id="status" class="status-text">
+                        Запись не начата
+                    </p>
+                </div>
+            </div>
+
+            <div class="visit-actions">
+                <button
+                    id="start-visit-button"
+                    class="button button-primary"
+                    type="button"
+                >
+                    Начать приём
+                </button>
+                <button
+                    id="finish-visit-button"
+                    class="button button-danger-outline"
+                    type="button"
+                    disabled
+                >
+                    Завершить приём
+                </button>
+            </div>
+        </section>
+
+        <div class="workspace">
+            <!-- Запись разговора -->
+            <section class="card recording-card" aria-labelledby="recording-title">
+                <div class="card-heading">
+                    <div class="section-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <rect x="8" y="3" width="8" height="13" rx="4"
+                                  stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"
+                                  stroke="currentColor" stroke-width="1.8"
+                                  stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 id="recording-title">Запись разговора</h2>
+                        <p class="card-subtitle">Аудио текущего приёма</p>
+                    </div>
+                </div>
+
+                <div class="recording-visual" aria-hidden="true">
+                    <span class="recording-orb"></span>
+                    <div class="recording-lines">
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+
+                <p class="recording-hint">
+                    Перед началом убедитесь, что микрофон подключён
+                    и разговор можно записывать
+                </p>
+
+                <button
+                    id="record-button"
+                    class="button button-record"
+                    type="button"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8" fill="currentColor"/>
+                    </svg>
+                    Начать запись
+                </button>
+
+                <div class="recording-footer">
+                    <span class="mini-dot"></span>
+                    <span>Запись сохраняется в браузере</span>
+                </div>
+            </section>
+
+            <!-- Прослушивание аудио -->
+            <section class="card audio-card" aria-labelledby="audio-title">
+                <div class="card-heading">
+                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M4 10v4m4-8v12m4-15v18m4-14v10m4-7v4"
+                                  stroke="currentColor" stroke-width="1.8"
+                                  stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 id="audio-title">Аудиозапись</h2>
+                        <p class="card-subtitle">Прослушивание и проверка</p>
+                    </div>
+                </div>
+
+                <audio id="audio-playback" controls hidden></audio>
+
+                <div class="empty-state">
+                    <div class="empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M8 5.5v13l10-6.5-10-6.5Z"
+                                  stroke="currentColor"
+                                  stroke-width="1.8"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <p class="empty-title">Аудио появится здесь</p>
+                    <p class="empty-description">
+                        После записи можно будет прослушать разговор
+                        и сверить его с распознанным текстом
+                    </p>
+                </div>
+
+                <button
+                    id="restore-audio-button"
+                    class="button button-secondary button-full"
+                    type="button"
+                >
+                    Восстановить сохранённое аудио
+                </button>
+            </section>
+
+            <!-- Распознанный текст -->
+            <section class="card transcription-card" aria-labelledby="transcription-title">
+                <div class="card-heading">
+                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                        <span>Т</span>
+                    </div>
+                    <div>
+                        <h2 id="transcription-title">Распознанный текст</h2>
+                        <p class="card-subtitle">Проверьте и отредактируйте результат</p>
+                    </div>
+                </div>
+
+                <div id="transcription" contenteditable="true">
+                    Здесь появится распознанный текст
+                </div>
+
+                <div class="button-row">
+                    <button
+                        id="transcribe-button"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Распознать аудио
+                    </button>
+                    <button
+                        id="copy-transcription-button"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Копировать текст
+                    </button>
+                </div>
+            </section>
+
+            <!-- Медицинская заметка -->
+            <section class="card note-card" aria-labelledby="note-title">
+                <div class="card-heading">
+                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                        <span>02</span>
+                    </div>
+                    <div>
+                        <h2 id="note-title">Медицинская заметка</h2>
+                        <p class="card-subtitle">
+                            Черновик для проверки врачом
+                        </p>
+                    </div>
+                </div>
+
+                <textarea
+                    id="medical-note"
+                    rows="12"
+                    placeholder="Здесь появится черновик медицинской заметки"
+                ></textarea>
+
+                <div class="button-row">
+                    <button
+                        id="generate-note-button"
+                        class="button button-primary"
+                        type="button"
+                    >
+                        Сформировать заметку
+                    </button>
+                    <button
+                        id="copy-note-button"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Копировать заметку
+                    </button>
+                </div>
+            </section>
+        </div>
+
+
+        <footer class="app-footer">
+            <span>Zametki · Локальный прототип</span>
+            <span>Данные могут содержать чувствительную информацию</span>
+        </footer>
     </main>
 
+    <script src="{{ url_for('static', path='js/fix-webm-duration.js') }}"></script>
     <script src="{{ url_for('static', path='js/recorder.js') }}"></script>
 </body>
 </html>
