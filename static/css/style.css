@@ -621,3 +621,11 @@ h2 {
         width: 100%;
     }
 }
+.recording-timer {
+    margin-top: 16px;
+    font-size: 2rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--text-color, #263b33);
+}

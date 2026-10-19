@@ -97,6 +97,9 @@
                         <span></span><span></span><span></span>
                     </div>
                 </div>
+                <div id="recording-timer" class="recording-timer" aria-live="off">
+                    00:00
+                </div>
 
                 <p class="recording-hint">
                     Перед началом убедитесь, что микрофон подключён
@@ -244,7 +247,7 @@
     </main>
 
     <script src="{{ url_for('static', path='js/fix-webm-duration.js') }}"></script>
-    <script src="{{ url_for('static', path='js/recorder.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='js/recorder.js') }}"></script>
 </body>
 </html>
 

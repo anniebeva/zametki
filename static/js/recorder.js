@@ -1,3 +1,20 @@
+import {
+    initDB,
+    getSession,
+    saveSession,
+    saveAudioChunk,
+    getAudioChunks,
+    getLatestSessionId,
+    deleteSessionData,
+} from "./storage.js";
+
+import {
+    startRecordingTimer,
+    stopRecordingTimer,
+    setElapsedTime,
+    getElapsedTime,
+    resetRecordingTimer,
+} from "./recording-timer.js";
 
 let db;
 let sessionId = null;
@@ -29,97 +46,31 @@ const copyNoteButton = document.getElementById("copy-note-button");
 
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
 
-const dbRequest = indexedDB.open("zametki", 1);
-
-dbRequest.addEventListener("success", (event) => {
-    db = event.target.result;
-    console.log("IndexedDB подключена");
-    restoreLatestSession();
-});
-
-dbRequest.addEventListener("upgradeneeded", (event) => {
-    db = event.target.result;
-
-    if (!db.objectStoreNames.contains("audioChunks")) {
-        db.createObjectStore("audioChunks", {
-            keyPath: "id",
-            autoIncrement: true,
-        });
-    }
-
-    console.log("Хранилище аудиофрагментов создано");
-});
-
-dbRequest.addEventListener("error", () => {
-    console.error("Не удалось открыть IndexedDB", dbRequest.error);
-    status.textContent = "Не удалось открыть локальное хранилище";
-});
-
 function setStatus(message) {
     status.textContent = message;
 }
 
-function getAllAudioChunks() {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction("audioChunks", "readonly");
-        const store = transaction.objectStore("audioChunks");
-        const request = store.getAll();
-
-        request.addEventListener("success", () => {
-            resolve(request.result);
-        });
-
-        request.addEventListener("error", () => {
-            reject(request.error);
-        });
-    });
+function updateVisitControls() {
+    startVisitButton.disabled = visitActive;
+    finishVisitButton.disabled = !visitActive;
 }
 
-function saveAudioChunk(chunk) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction("audioChunks", "readwrite");
-        const store = transaction.objectStore("audioChunks");
-
-        store.add({
-            sessionId,
-            audio: chunk,
-            createdAt: Date.now(),
-        });
-
-        transaction.addEventListener("complete", resolve);
-        transaction.addEventListener("error", () => {
-            reject(transaction.error);
-        });
-        transaction.addEventListener("abort", () => {
-            reject(transaction.error || new Error("Сохранение отменено"));
-        });
-    });
-}
-
-async function getAudioChunks(currentSessionId) {
-    const allChunks = await getAllAudioChunks();
-
-    return allChunks
-        .filter((chunk) => chunk.sessionId === currentSessionId)
-        .sort((a, b) => a.id - b.id);
-}
-
-async function getLatestSessionId() {
-    const allChunks = await getAllAudioChunks();
-
-    if (allChunks.length === 0) {
-        return null;
+function revokeCurrentAudioUrl() {
+    if (currentAudioUrl) {
+        URL.revokeObjectURL(currentAudioUrl);
+        currentAudioUrl = null;
     }
-
-    allChunks.sort((a, b) => b.createdAt - a.createdAt);
-    return allChunks[0].sessionId;
 }
-
 
 async function restoreAudio(currentSessionId) {
     const chunks = await getAudioChunks(currentSessionId);
 
+    revokeCurrentAudioUrl();
+
     if (chunks.length === 0) {
+        audioPlayback.removeAttribute("src");
+        audioPlayback.hidden = true;
+        audioPlayback.load();
         return false;
     }
 
@@ -128,45 +79,81 @@ async function restoreAudio(currentSessionId) {
         { type: "audio/webm" }
     );
 
-    const fixedBlob = await window.ysFixWebmDuration(
-        audioBlob,
-        recordingDuration
-    );
+    const duration = Math.max(recordingDuration, getElapsedTime());
 
-    if (currentAudioUrl) {
-        URL.revokeObjectURL(currentAudioUrl);
-    }
+    const fixedBlob = typeof window.ysFixWebmDuration === "function"
+        ? await window.ysFixWebmDuration(audioBlob, duration)
+        : audioBlob;
 
     currentAudioUrl = URL.createObjectURL(fixedBlob);
     audioPlayback.src = currentAudioUrl;
     audioPlayback.hidden = false;
+    audioPlayback.load();
 
     return true;
 }
 
-
 async function restoreLatestSession() {
-    try {
-        const latestSessionId = await getLatestSessionId();
+    const latestSessionId = await getLatestSessionId();
 
-        if (!latestSessionId) {
-            setStatus("Запись не начата");
-            return;
-        }
+    if (!latestSessionId) {
+        sessionId = null;
+        visitActive = false;
 
-        sessionId = latestSessionId;
+        resetRecordingTimer();
+        transcription.textContent = INITIAL_TRANSCRIPTION;
 
-        await restoreAudio(sessionId);
-
-        setStatus("Найдена сохранённая запись");
-        recordButton.textContent = "Продолжить запись";
-        restoreAudioButton.textContent = "Обновить аудиозапись";
-
-        console.log("Восстановлена сессия:", sessionId);
-    } catch (error) {
-        console.error("Не удалось восстановить запись", error);
-        setStatus("Не удалось восстановить запись");
+        updateVisitControls();
+        setStatus("Запись не начата");
+        return;
     }
+
+    sessionId = latestSessionId;
+
+    let session = await getSession(sessionId);
+
+    // Восстанавливаем метаданные старых сессий.
+    if (!session) {
+        session = {
+            sessionId,
+            status: "active",
+            transcription: "",
+            elapsedMilliseconds: 0,
+            lastSegmentDuration: 0,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+
+        await saveSession(session);
+    }
+
+    if (session.status !== "active") {
+        sessionId = null;
+        visitActive = false;
+
+        resetRecordingTimer();
+        updateVisitControls();
+        setStatus("Нет незавершённого приёма");
+        return;
+    }
+
+    visitActive = true;
+
+    setElapsedTime(session.elapsedMilliseconds || 0);
+    recordingDuration = session.lastSegmentDuration || 0;
+
+    transcription.textContent =
+        session.transcription || INITIAL_TRANSCRIPTION;
+
+    await restoreAudio(sessionId);
+
+    recordButton.textContent = "Продолжить запись";
+    restoreAudioButton.textContent = "Обновить аудиозапись";
+
+    updateVisitControls();
+    setStatus("Восстановлен незавершённый приём");
+
+    console.log("Восстановлена сессия:", sessionId);
 }
 
 async function getMicrophone() {
@@ -177,32 +164,70 @@ async function getMicrophone() {
     return navigator.mediaDevices.getUserMedia({ audio: true });
 }
 
-function updateVisitControls() {
-    startVisitButton.disabled = visitActive;
-    finishVisitButton.disabled = !visitActive;
+async function createVisit() {
+    const newSessionId = crypto.randomUUID();
+
+    await saveSession({
+        sessionId: newSessionId,
+        status: "active",
+        transcription: "",
+        elapsedMilliseconds: 0,
+        lastSegmentDuration: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+    });
+
+    sessionId = newSessionId;
+    visitActive = true;
+    recordingStarted = false;
+    recordingStartedAt = null;
+    recordingDuration = 0;
+
+    audioChunks = [];
+    pendingSaves = [];
+
+    resetRecordingTimer();
+
+    transcription.textContent = INITIAL_TRANSCRIPTION;
+    medicalNote.value = "";
+
+    revokeCurrentAudioUrl();
+
+    audioPlayback.removeAttribute("src");
+    audioPlayback.hidden = true;
+    audioPlayback.load();
+
+    updateVisitControls();
+    setStatus("Приём начат. Можно начинать запись");
 }
 
-startVisitButton.addEventListener("click", () => {
-    visitActive = true;
+startVisitButton.addEventListener("click", async () => {
+    try {
+        if (visitActive) {
+            return;
+        }
 
-    if (!sessionId) {
-        sessionId = crypto.randomUUID();
+        await createVisit();
+    } catch (error) {
+        console.error("Не удалось создать приём", error);
+        setStatus("Не удалось создать приём");
     }
-
-    setStatus("Приём начат. Можно начинать запись");
-    updateVisitControls();
 });
 
 recordButton.addEventListener("click", async () => {
     if (mediaRecorder?.state === "recording") {
-        mediaRecorder.stop();
-        recordButton.textContent = "Обработка аудио…";
         recordButton.disabled = true;
+        recordButton.textContent = "Обработка аудио…";
+        mediaRecorder.stop();
         return;
     }
 
     if (mediaRecorder?.state === "paused") {
         mediaRecorder.resume();
+
+        recordingStartedAt = Date.now();
+        startRecordingTimer();
+
         recordButton.textContent = "Остановить запись";
         setStatus("Запись продолжается");
         return;
@@ -213,16 +238,12 @@ recordButton.addEventListener("click", async () => {
             throw new Error("Локальное хранилище ещё не готово");
         }
 
-        if (!sessionId) {
-            sessionId = crypto.randomUUID();
-        }
-
-        if (!visitActive) {
-            visitActive = true;
-            updateVisitControls();
+        if (!sessionId || !visitActive) {
+            await createVisit();
         }
 
         audioStream = await getMicrophone();
+
         audioChunks = [];
         pendingSaves = [];
 
@@ -235,11 +256,14 @@ recordButton.addEventListener("click", async () => {
 
             audioChunks.push(event.data);
 
-            const savePromise = saveAudioChunk(event.data);
+            const savePromise = saveAudioChunk(sessionId, event.data);
             pendingSaves.push(savePromise);
 
             savePromise.catch((error) => {
-                console.error("Не удалось сохранить аудиофрагмент", error);
+                console.error(
+                    "Не удалось сохранить аудиофрагмент",
+                    error
+                );
                 setStatus("Ошибка сохранения аудио");
             });
         });
@@ -249,12 +273,17 @@ recordButton.addEventListener("click", async () => {
                 recordingDuration = Date.now() - recordingStartedAt;
                 recordingStartedAt = null;
             }
+
+            stopRecordingTimer();
             stopProcessingPromise = processStoppedRecording();
         });
 
         recordingStartedAt = Date.now();
+
         mediaRecorder.start(5000);
         recordingStarted = true;
+
+        startRecordingTimer();
 
         setStatus("Идёт запись");
         recordButton.textContent = "Остановить запись";
@@ -264,6 +293,9 @@ recordButton.addEventListener("click", async () => {
 
         audioStream?.getTracks().forEach((track) => track.stop());
         audioStream = null;
+
+        recordingStartedAt = null;
+        stopRecordingTimer();
     }
 });
 
@@ -274,13 +306,26 @@ async function processStoppedRecording() {
     try {
         await Promise.all(pendingSaves);
 
+        const session = await getSession(sessionId);
+
+        if (session) {
+            await saveSession({
+                ...session,
+                elapsedMilliseconds: getElapsedTime(),
+                lastSegmentDuration: recordingDuration,
+            });
+        }
+
         setStatus("Подготавливаем аудио для распознавания…");
 
         await transcribeCurrentSession();
     } catch (error) {
         console.error("Не удалось обработать запись", error);
-        setStatus("Запись сохранена не полностью или не удалось её обработать");
+        setStatus(
+            "Запись сохранена не полностью или не удалось её обработать"
+        );
     } finally {
+        recordingStarted = false;
         recordButton.disabled = false;
         recordButton.textContent = "Продолжить запись";
     }
@@ -292,7 +337,8 @@ async function transcribeCurrentSession() {
         return;
     }
 
-    const chunks = await getAudioChunks(sessionId);
+    const currentSessionId = sessionId;
+    const chunks = await getAudioChunks(currentSessionId);
 
     if (chunks.length === 0) {
         setStatus("В текущей сессии нет аудиофрагментов");
@@ -321,10 +367,26 @@ async function transcribeCurrentSession() {
         }
 
         const data = await response.json();
+        const text = data.text || "";
 
-        transcription.textContent = data.text || "";
-        setStatus("Распознавание завершено");
-        await restoreAudio(sessionId);
+        const session = await getSession(currentSessionId);
+
+        if (!session || session.status !== "active") {
+            throw new Error("Приём уже завершён или не найден");
+        }
+
+        await saveSession({
+            ...session,
+            transcription: text,
+        });
+
+        if (sessionId === currentSessionId) {
+            transcription.textContent = text || INITIAL_TRANSCRIPTION;
+
+            setStatus("Распознавание завершено");
+
+            await restoreAudio(currentSessionId);
+        }
     } finally {
         transcribeButton.disabled = false;
     }
@@ -391,37 +453,45 @@ generateNoteButton.addEventListener("click", () => {
 });
 
 finishVisitButton.addEventListener("click", async () => {
+    if (!sessionId || !visitActive) {
+        return;
+    }
+
     const confirmed = window.confirm(
-        "Завершить приём и удалить его аудио из локального хранилища? " +
-        "Это действие нельзя отменить."
+        "Завершить приём и удалить его аудио и транскрипцию " +
+        "из локального хранилища? Это действие нельзя отменить."
     );
 
     if (!confirmed) {
         return;
     }
 
+    const finishingSessionId = sessionId;
+
     try {
-        if (mediaRecorder?.state === "recording") {
+        if (
+            mediaRecorder?.state === "recording" ||
+            mediaRecorder?.state === "paused"
+        ) {
             const stopped = new Promise((resolve) => {
-                mediaRecorder.addEventListener("stop", resolve, { once: true });
+                mediaRecorder.addEventListener("stop", resolve, {
+                    once: true,
+                });
             });
 
             mediaRecorder.stop();
+
             await stopped;
             await stopProcessingPromise;
         }
 
-        if (sessionId && db) {
-            await deleteSessionAudio(sessionId);
-        }
+        await deleteSessionData(finishingSessionId);
 
-        if (currentAudioUrl) {
-            URL.revokeObjectURL(currentAudioUrl);
-            currentAudioUrl = null;
-        }
+        revokeCurrentAudioUrl();
 
         audioPlayback.removeAttribute("src");
         audioPlayback.hidden = true;
+        audioPlayback.load();
 
         transcription.textContent = INITIAL_TRANSCRIPTION;
         medicalNote.value = "";
@@ -431,6 +501,12 @@ finishVisitButton.addEventListener("click", async () => {
         recordingStarted = false;
         mediaRecorder = null;
         audioChunks = [];
+        pendingSaves = [];
+        recordingDuration = 0;
+        recordingStartedAt = null;
+
+        stopRecordingTimer();
+        resetRecordingTimer();
 
         recordButton.disabled = false;
         recordButton.textContent = "Начать запись";
@@ -443,34 +519,19 @@ finishVisitButton.addEventListener("click", async () => {
     }
 });
 
-function deleteSessionAudio(currentSessionId) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction("audioChunks", "readwrite");
-        const store = transaction.objectStore("audioChunks");
-        const request = store.openCursor();
+async function initialize() {
+    try {
+        db = await initDB();
 
-        request.addEventListener("success", () => {
-            const cursor = request.result;
+        console.log("IndexedDB подключена");
 
-            if (!cursor) {
-                return;
-            }
+        await restoreLatestSession();
+    } catch (error) {
+        console.error("Не удалось восстановить приём", error);
+        setStatus("Не удалось открыть локальное хранилище");
+    }
 
-            if (cursor.value.sessionId === currentSessionId) {
-                cursor.delete();
-            }
-
-            cursor.continue();
-        });
-
-        transaction.addEventListener("complete", resolve);
-        transaction.addEventListener("error", () => {
-            reject(transaction.error);
-        });
-        transaction.addEventListener("abort", () => {
-            reject(transaction.error || new Error("Удаление отменено"));
-        });
-    });
+    updateVisitControls();
 }
 
-updateVisitControls();
+initialize();
