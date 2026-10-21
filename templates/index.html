@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -41,7 +42,7 @@
                 <div>
                     <p class="eyebrow">ТЕКУЩАЯ РАБОТА</p>
                     <h2 id="visit-title">Приём</h2>
-                    <p id="status" class="status-text">
+                    <p id="status" class="status-text" aria-live="polite">
                         Запись не начата
                     </p>
                 </div>
@@ -68,15 +69,22 @@
 
         <div class="workspace">
             <!-- Запись разговора -->
-            <section class="card recording-card" aria-labelledby="recording-title">
+            <section
+                class="card recording-card"
+                aria-labelledby="recording-title"
+            >
                 <div class="card-heading">
                     <div class="section-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none">
-                            <rect x="8" y="3" width="8" height="13" rx="4"
-                                  stroke="currentColor" stroke-width="1.8"/>
-                            <path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"
-                                  stroke="currentColor" stroke-width="1.8"
-                                  stroke-linecap="round"/>
+                            <rect
+                                x="8" y="3" width="8" height="13" rx="4"
+                                stroke="currentColor" stroke-width="1.8"
+                            />
+                            <path
+                                d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"
+                                stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round"
+                            />
                         </svg>
                     </div>
                     <div>
@@ -97,7 +105,12 @@
                         <span></span><span></span><span></span>
                     </div>
                 </div>
-                <div id="recording-timer" class="recording-timer" aria-live="off">
+
+                <div
+                    id="recording-timer"
+                    class="recording-timer"
+                    aria-live="off"
+                >
                     00:00
                 </div>
 
@@ -124,13 +137,21 @@
             </section>
 
             <!-- Прослушивание аудио -->
-            <section class="card audio-card" aria-labelledby="audio-title">
+            <section
+                class="card audio-card"
+                aria-labelledby="audio-title"
+            >
                 <div class="card-heading">
-                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                    <div
+                        class="section-icon section-icon-muted"
+                        aria-hidden="true"
+                    >
                         <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M4 10v4m4-8v12m4-15v18m4-14v10m4-7v4"
-                                  stroke="currentColor" stroke-width="1.8"
-                                  stroke-linecap="round"/>
+                            <path
+                                d="M4 10v4m4-8v12m4-15v18m4-14v10m4-7v4"
+                                stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round"
+                            />
                         </svg>
                     </div>
                     <div>
@@ -144,10 +165,12 @@
                 <div class="empty-state">
                     <div class="empty-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M8 5.5v13l10-6.5-10-6.5Z"
-                                  stroke="currentColor"
-                                  stroke-width="1.8"
-                                  stroke-linejoin="round"/>
+                            <path
+                                d="M8 5.5v13l10-6.5-10-6.5Z"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linejoin="round"
+                            />
                         </svg>
                     </div>
                     <p class="empty-title">Аудио появится здесь</p>
@@ -167,20 +190,34 @@
             </section>
 
             <!-- Распознанный текст -->
-            <section class="card transcription-card" aria-labelledby="transcription-title">
+            <section
+                class="card transcription-card"
+                aria-labelledby="transcription-title"
+            >
                 <div class="card-heading">
-                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                    <div
+                        class="section-icon section-icon-muted"
+                        aria-hidden="true"
+                    >
                         <span>Т</span>
                     </div>
                     <div>
                         <h2 id="transcription-title">Распознанный текст</h2>
-                        <p class="card-subtitle">Проверьте и отредактируйте результат</p>
+                        <p class="card-subtitle">
+                            Проверьте и отредактируйте результат
+                        </p>
                     </div>
                 </div>
 
                 <div id="transcription" contenteditable="true">
                     Здесь появится распознанный текст
                 </div>
+
+                <p
+                    id="transcription-status"
+                    class="action-status"
+                    aria-live="polite"
+                ></p>
 
                 <div class="button-row">
                     <button
@@ -201,9 +238,15 @@
             </section>
 
             <!-- Медицинская заметка -->
-            <section class="card note-card" aria-labelledby="note-title">
+            <section
+                class="card note-card"
+                aria-labelledby="note-title"
+            >
                 <div class="card-heading">
-                    <div class="section-icon section-icon-muted" aria-hidden="true">
+                    <div
+                        class="section-icon section-icon-muted"
+                        aria-hidden="true"
+                    >
                         <span>02</span>
                     </div>
                     <div>
@@ -219,6 +262,12 @@
                     rows="12"
                     placeholder="Здесь появится черновик медицинской заметки"
                 ></textarea>
+
+                <p
+                    id="note-status"
+                    class="action-status"
+                    aria-live="polite"
+                ></p>
 
                 <div class="button-row">
                     <button
@@ -239,15 +288,17 @@
             </section>
         </div>
 
-
         <footer class="app-footer">
             <span>Zametki · Локальный прототип</span>
             <span>Данные могут содержать чувствительную информацию</span>
         </footer>
     </main>
-    <script src="{{ url_for('static', path='js/fix-webm-duration.js') }}"></script>
-    <script type="module" src="{{ url_for('static', path='js/recorder.js') }}"></script>
 
+    <script src="{{ url_for('static', path='js/fix-webm-duration.js') }}"></script>
+    <script
+        type="module"
+        src="{{ url_for('static', path='js/recorder.js') }}"
+    ></script>
 </body>
 </html>
 

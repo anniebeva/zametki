@@ -1,4 +1,3 @@
-
 import {
     initDB,
     getSession,
@@ -35,6 +34,8 @@ import { transcribeCurrentSession as transcribeAudio } from "./transcription.js"
 let sessionId = null;
 let visitActive = false;
 let recordingDuration = 0;
+let copyTranscriptionTimeout = null;
+let copyNoteTimeout = null;
 
 const recordButton = document.getElementById("record-button");
 const startVisitButton = document.getElementById("start-visit-button");
@@ -53,7 +54,11 @@ const copyTranscriptionButton = document.getElementById(
 );
 const copyNoteButton = document.getElementById("copy-note-button");
 
+const transcriptionStatus = document.getElementById("transcription-status");
+const noteStatus = document.getElementById("note-status");
+
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
+const COPY_FEEDBACK_DURATION = 2000;
 
 function setStatus(message) {
     status.textContent = message;
@@ -62,6 +67,12 @@ function setStatus(message) {
 function updateVisitControls() {
     startVisitButton.disabled = visitActive;
     finishVisitButton.disabled = !visitActive;
+}
+
+function setActionStatus(element, message, type = "") {
+    element.textContent = message;
+    element.classList.toggle("is-error", type === "error");
+    element.classList.toggle("is-success", type === "success");
 }
 
 async function restoreCurrentAudio(currentSessionId) {
@@ -88,6 +99,9 @@ async function createVisit() {
 
     transcription.textContent = INITIAL_TRANSCRIPTION;
     medicalNote.value = "";
+
+    setActionStatus(transcriptionStatus, "");
+    setActionStatus(noteStatus, "");
 
     revokeCurrentAudioUrl();
     audioPlayback.removeAttribute("src");
@@ -201,11 +215,22 @@ async function generateMedicalNote() {
         !transcriptText ||
         transcriptText === INITIAL_TRANSCRIPTION
     ) {
-        setStatus("Сначала распознайте аудио или добавьте текст транскрипции");
+        setActionStatus(
+            noteStatus,
+            "Сначала распознайте аудио или добавьте текст транскрипции",
+            "error",
+        );
+        setStatus("Нет текста для формирования заметки");
         return;
     }
 
     generateNoteButton.disabled = true;
+    generateNoteButton.textContent = "Генерируем…";
+
+    setActionStatus(
+        noteStatus,
+        "Формируем заметку. Это может занять несколько секунд.",
+    );
     setStatus("Формируем медицинскую заметку…");
 
     try {
@@ -228,26 +253,75 @@ async function generateMedicalNote() {
         }
 
         medicalNote.value = result.note;
+
+        setActionStatus(
+            noteStatus,
+            "Черновик готов. Проверьте его перед использованием.",
+            "success",
+        );
         setStatus("Черновик заметки готов. Проверьте его");
     } catch (error) {
         console.error("Ошибка генерации заметки:", error);
+
+        setActionStatus(
+            noteStatus,
+            `Не удалось сформировать заметку: ${error.message}`,
+            "error",
+        );
         setStatus(`Не удалось сформировать заметку: ${error.message}`);
     } finally {
         generateNoteButton.disabled = false;
+        generateNoteButton.textContent = "Сформировать заметку";
     }
 }
 
-async function copyText(text) {
-    if (!text.trim() || text === INITIAL_TRANSCRIPTION) {
+async function copyText(text, button, originalLabel, statusElement, timeoutName) {
+    if (!text.trim() || text.trim() === INITIAL_TRANSCRIPTION) {
+        setActionStatus(statusElement, "Нет текста для копирования", "error");
         setStatus("Нет текста для копирования");
         return;
     }
 
     try {
         await navigator.clipboard.writeText(text);
+
+        button.textContent = "Скопировано ✓";
+        setActionStatus(statusElement, "Текст скопирован", "success");
         setStatus("Скопировано!");
+
+        const timeout =
+            timeoutName === "transcription"
+                ? copyTranscriptionTimeout
+                : copyNoteTimeout;
+
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+
+        const newTimeout = setTimeout(() => {
+            button.textContent = originalLabel;
+            setActionStatus(statusElement, "");
+
+            if (timeoutName === "transcription") {
+                copyTranscriptionTimeout = null;
+            } else {
+                copyNoteTimeout = null;
+            }
+        }, COPY_FEEDBACK_DURATION);
+
+        if (timeoutName === "transcription") {
+            copyTranscriptionTimeout = newTimeout;
+        } else {
+            copyNoteTimeout = newTimeout;
+        }
     } catch (error) {
         console.error("Не удалось скопировать текст:", error);
+
+        setActionStatus(
+            statusElement,
+            "Не удалось скопировать текст. Проверьте разрешения браузера.",
+            "error",
+        );
         setStatus("Не удалось скопировать текст");
     }
 }
@@ -310,11 +384,23 @@ restoreAudioButton.addEventListener("click", async () => {
 });
 
 copyTranscriptionButton.addEventListener("click", () => {
-    copyText(transcription.textContent);
+    copyText(
+        transcription.textContent,
+        copyTranscriptionButton,
+        "Копировать текст",
+        transcriptionStatus,
+        "transcription",
+    );
 });
 
 copyNoteButton.addEventListener("click", () => {
-    copyText(medicalNote.value);
+    copyText(
+        medicalNote.value,
+        copyNoteButton,
+        "Копировать заметку",
+        noteStatus,
+        "note",
+    );
 });
 
 finishVisitButton.addEventListener("click", async () => {
@@ -356,6 +442,9 @@ finishVisitButton.addEventListener("click", async () => {
 
         transcription.textContent = INITIAL_TRANSCRIPTION;
         medicalNote.value = "";
+
+        setActionStatus(transcriptionStatus, "");
+        setActionStatus(noteStatus, "");
 
         recordButton.disabled = false;
         recordButton.textContent = "Начать запись";

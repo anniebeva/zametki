@@ -629,3 +629,27 @@ h2 {
     text-align: center;
     color: var(--text-color, #263b33);
 }
+
+.action-status {
+    min-height: 1.25rem;
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.action-status:empty {
+    display: none;
+}
+
+.action-status.is-success {
+    color: #16803d;
+}
+
+.action-status.is-error {
+    color: #c0392b;
+}
+
+.button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
