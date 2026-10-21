@@ -1,3 +1,4 @@
+
 import {
     initDB,
     getSession,
@@ -47,7 +48,9 @@ const medicalNote = document.getElementById("medical-note");
 
 const transcribeButton = document.getElementById("transcribe-button");
 const generateNoteButton = document.getElementById("generate-note-button");
-const copyTranscriptionButton = document.getElementById("copy-transcription-button");
+const copyTranscriptionButton = document.getElementById(
+    "copy-transcription-button",
+);
 const copyNoteButton = document.getElementById("copy-note-button");
 
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
@@ -191,6 +194,49 @@ async function transcribeCurrentVisit() {
     });
 }
 
+async function generateMedicalNote() {
+    const transcriptText = transcription.textContent.trim();
+
+    if (
+        !transcriptText ||
+        transcriptText === INITIAL_TRANSCRIPTION
+    ) {
+        setStatus("Сначала распознайте аудио или добавьте текст транскрипции");
+        return;
+    }
+
+    generateNoteButton.disabled = true;
+    setStatus("Формируем медицинскую заметку…");
+
+    try {
+        const response = await fetch("/generate-note", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                transcription: transcriptText,
+            }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail || "Не удалось сформировать заметку",
+            );
+        }
+
+        medicalNote.value = result.note;
+        setStatus("Черновик заметки готов. Проверьте его");
+    } catch (error) {
+        console.error("Ошибка генерации заметки:", error);
+        setStatus(`Не удалось сформировать заметку: ${error.message}`);
+    } finally {
+        generateNoteButton.disabled = false;
+    }
+}
+
 async function copyText(text) {
     if (!text.trim() || text === INITIAL_TRANSCRIPTION) {
         setStatus("Нет текста для копирования");
@@ -199,7 +245,7 @@ async function copyText(text) {
 
     try {
         await navigator.clipboard.writeText(text);
-        setStatus("Текст скопирован");
+        setStatus("Скопировано!");
     } catch (error) {
         console.error("Не удалось скопировать текст:", error);
         setStatus("Не удалось скопировать текст");
@@ -241,6 +287,8 @@ transcribeButton.addEventListener("click", async () => {
     }
 });
 
+generateNoteButton.addEventListener("click", generateMedicalNote);
+
 restoreAudioButton.addEventListener("click", async () => {
     try {
         if (!sessionId) {
@@ -267,10 +315,6 @@ copyTranscriptionButton.addEventListener("click", () => {
 
 copyNoteButton.addEventListener("click", () => {
     copyText(medicalNote.value);
-});
-
-generateNoteButton.addEventListener("click", () => {
-    setStatus("Генерация медицинской заметки пока не подключена");
 });
 
 finishVisitButton.addEventListener("click", async () => {
