@@ -4,9 +4,23 @@ export async function createVisitSession({ saveSession }) {
     const session = {
         sessionId: crypto.randomUUID(),
         status: "active",
+
+        audioVersion: 0,
+
         transcription: "",
+        transcriptionAudioVersion: null,
+        transcriptionStatus: "idle",
+        transcriptionError: "",
+        transcriptionVersion: 0,
+
+        medicalNote: "",
+        noteSourceTranscriptionVersion: null,
+        noteStatus: "idle",
+        noteError: "",
+
         elapsedMilliseconds: 0,
         lastSegmentDuration: 0,
+
         createdAt: now,
         updatedAt: now,
     };
@@ -16,6 +30,7 @@ export async function createVisitSession({ saveSession }) {
     return session;
 }
 
+/** Restore the latest unfinished visit and initialize missing state fields */
 export async function restoreLatestSession({
     getLatestSessionId,
     getSession,
@@ -35,7 +50,16 @@ export async function restoreLatestSession({
         session = {
             sessionId,
             status: "active",
+            audioVersion: 0,
             transcription: "",
+            transcriptionAudioVersion: null,
+            transcriptionStatus: "idle",
+            transcriptionError: "",
+            transcriptionVersion: 0,
+            medicalNote: "",
+            noteSourceTranscriptionVersion: null,
+            noteStatus: "idle",
+            noteError: "",
             elapsedMilliseconds: 0,
             lastSegmentDuration: 0,
             createdAt: now,
@@ -49,9 +73,35 @@ export async function restoreLatestSession({
         return null;
     }
 
-    return session;
+    // Add missing fields to sessions created by an older version
+    const updatedSession = {
+        audioVersion: 0,
+        transcription: "",
+        transcriptionAudioVersion: null,
+        transcriptionStatus: "idle",
+        transcriptionError: "",
+        transcriptionVersion: 0,
+        medicalNote: "",
+        noteSourceTranscriptionVersion: null,
+        noteStatus: "idle",
+        noteError: "",
+        elapsedMilliseconds: 0,
+        lastSegmentDuration: 0,
+        ...session,
+    };
+
+    if (
+        Object.keys(updatedSession).some(
+            (key) => updatedSession[key] !== session[key],
+        )
+    ) {
+        await saveSession(updatedSession);
+    }
+
+    return updatedSession;
 }
 
+/** Delete a visit and its associated locally stored data */
 export async function deleteVisitSession({
     sessionId,
     deleteSessionData,
