@@ -1,0 +1,48 @@
+<section
+    class="card note-card"
+    aria-labelledby="note-title"
+>
+    <div class="card-heading">
+        <div
+            class="section-icon section-icon-muted"
+            aria-hidden="true"
+        >
+            <span>02</span>
+        </div>
+        <div>
+            <h2 id="note-title">Медицинская заметка</h2>
+            <p class="card-subtitle">
+                Черновик для проверки врачом
+            </p>
+        </div>
+    </div>
+
+    <textarea
+        id="medical-note"
+        rows="12"
+        placeholder="Здесь появится черновик медицинской заметки"
+    ></textarea>
+
+    <p
+        id="note-status"
+        class="action-status"
+        aria-live="polite"
+    ></p>
+
+    <div class="button-row">
+        <button
+            id="generate-note-button"
+            class="button button-primary"
+            type="button"
+        >
+            Сформировать заметку
+        </button>
+        <button
+            id="copy-note-button"
+            class="button button-secondary"
+            type="button"
+        >
+            Копировать заметку
+        </button>
+    </div>
+</section>

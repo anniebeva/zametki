@@ -31,14 +31,13 @@ import {
 
 import { transcribeCurrentSession as transcribeAudio } from "./transcription.js";
 
+import { createMedicalNoteController } from "./medical-note.js";
+
 let sessionId = null;
 let visitActive = false;
 let recordingDuration = 0;
 let copyTranscriptionTimeout = null;
-let copyNoteTimeout = null;
 let transcriptionSaveTimeout = null;
-let noteSaveTimeout = null;
-let noteGenerationVersion = 0;
 
 const recordButton = document.getElementById("record-button");
 const startVisitButton = document.getElementById("start-visit-button");
@@ -124,10 +123,7 @@ function clearPendingSaveTimers() {
         transcriptionSaveTimeout = null;
     }
 
-    if (noteSaveTimeout !== null) {
-        clearTimeout(noteSaveTimeout);
-        noteSaveTimeout = null;
-    }
+    medicalNoteController.clearPendingSaveTimer();
 }
 
 async function saveEditedTranscription() {
@@ -172,42 +168,6 @@ async function saveEditedTranscription() {
     }
 }
 
-async function saveEditedNote() {
-    const currentSessionId = sessionId;
-    const text = medicalNote.value;
-
-    try {
-        const session = await getSession(currentSessionId);
-
-        if (
-            !session ||
-            session.status !== "active" ||
-            !visitActive ||
-            sessionId !== currentSessionId
-        ) {
-            return;
-        }
-
-        await saveSession({
-            ...session,
-            medicalNote: text,
-            noteSourceTranscriptionVersion: session.transcriptionVersion || 0,
-            noteStatus: "edited",
-            noteError: "",
-            updatedAt: Date.now(),
-        });
-
-        setActionStatus(noteStatus, "Изменения заметки сохранены", "success");
-    } catch (error) {
-        console.error("Не удалось сохранить заметку:", error);
-        setActionStatus(
-            noteStatus,
-            "Не удалось сохранить заметку",
-            "error",
-        );
-    }
-}
-
 function scheduleTranscriptionSave() {
     if (!sessionId || !visitActive) {
         return;
@@ -225,22 +185,29 @@ function scheduleTranscriptionSave() {
     }, EDIT_SAVE_DELAY);
 }
 
-function scheduleNoteSave() {
-    if (!sessionId || !visitActive) {
-        return;
+async function flushPendingTranscriptionSave() {
+    if (transcriptionSaveTimeout !== null) {
+        clearTimeout(transcriptionSaveTimeout);
+        transcriptionSaveTimeout = null;
+        await saveEditedTranscription();
     }
-
-    if (noteSaveTimeout !== null) {
-        clearTimeout(noteSaveTimeout);
-    }
-
-    setActionStatus(noteStatus, "Сохраняем изменения…");
-
-    noteSaveTimeout = setTimeout(() => {
-        noteSaveTimeout = null;
-        void saveEditedNote();
-    }, EDIT_SAVE_DELAY);
 }
+
+const medicalNoteController = createMedicalNoteController({
+    getSessionId: () => sessionId,
+    isVisitActive: () => visitActive,
+    getTranscriptionText,
+    flushPendingTranscriptionSave,
+    getSession,
+    saveSession,
+    saveCurrentSessionChanges,
+    setStatus,
+    setActionStatus,
+    noteStatus,
+    medicalNote,
+    generateNoteButton,
+    copyNoteButton,
+});
 
 async function restoreCurrentAudio(currentSessionId) {
     return restoreAudio({
@@ -258,8 +225,8 @@ async function createVisit() {
     sessionId = session.sessionId;
     visitActive = true;
     recordingDuration = 0;
-    noteGenerationVersion += 1;
 
+    medicalNoteController.invalidateGeneration();
     clearPendingSaveTimers();
 
     recordingController.reset();
@@ -408,159 +375,11 @@ async function transcribeCurrentVisit() {
     });
 }
 
-async function generateMedicalNote() {
-    if (!sessionId || !visitActive) {
-        setStatus("Сначала начните приём");
-        return;
-    }
-
-    const currentSessionId = sessionId;
-    const currentGenerationVersion = ++noteGenerationVersion;
-
-    // Save pending manual transcript edits before sending the text
-    if (transcriptionSaveTimeout !== null) {
-        clearTimeout(transcriptionSaveTimeout);
-        transcriptionSaveTimeout = null;
-        await saveEditedTranscription();
-    }
-
-    if (
-        !visitActive ||
-        sessionId !== currentSessionId ||
-        currentGenerationVersion !== noteGenerationVersion
-    ) {
-        return;
-    }
-
-    const transcriptText = getTranscriptionText();
-
-    if (!transcriptText) {
-        setActionStatus(
-            noteStatus,
-            "Сначала распознайте аудио или добавьте текст транскрипции",
-            "error",
-        );
-        setStatus("Нет текста для формирования заметки");
-        return;
-    }
-
-    generateNoteButton.disabled = true;
-    generateNoteButton.textContent = "Генерируем…";
-
-    setActionStatus(
-        noteStatus,
-        "Формируем заметку. Это может занять несколько секунд.",
-    );
-    setStatus("Формируем медицинскую заметку…");
-
-    try {
-        const response = await fetch("/generate-note", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                transcription: transcriptText,
-            }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                result.detail || "Не удалось сформировать заметку",
-            );
-        }
-
-        // Ignore late responses after the visit was finished or changed
-        if (
-            !visitActive ||
-            sessionId !== currentSessionId ||
-            currentGenerationVersion !== noteGenerationVersion
-        ) {
-            return;
-        }
-
-        const session = await getSession(currentSessionId);
-
-        if (
-            !session ||
-            session.status !== "active" ||
-            !visitActive ||
-            sessionId !== currentSessionId ||
-            currentGenerationVersion !== noteGenerationVersion
-        ) {
-            return;
-        }
-
-        const noteText = result.note || "";
-
-        await saveSession({
-            ...session,
-            medicalNote: noteText,
-            noteSourceTranscriptionVersion: session.transcriptionVersion || 0,
-            noteStatus: "done",
-            noteError: "",
-            updatedAt: Date.now(),
-        });
-
-        if (
-            !visitActive ||
-            sessionId !== currentSessionId ||
-            currentGenerationVersion !== noteGenerationVersion
-        ) {
-            return;
-        }
-
-        medicalNote.value = noteText;
-
-        setActionStatus(
-            noteStatus,
-            "Черновик готов и сохранён. Проверьте его перед использованием.",
-            "success",
-        );
-        setStatus("Черновик заметки готов и сохранён. Проверьте его");
-    } catch (error) {
-        console.error("Ошибка генерации заметки:", error);
-
-        if (
-            visitActive &&
-            sessionId === currentSessionId &&
-            currentGenerationVersion === noteGenerationVersion
-        ) {
-            try {
-                await saveCurrentSessionChanges({
-                    noteStatus: "error",
-                    noteError: error.message,
-                }, currentSessionId);
-            } catch (saveError) {
-                console.error(
-                    "Не удалось сохранить статус ошибки:",
-                    saveError,
-                );
-            }
-
-            setActionStatus(
-                noteStatus,
-                `Не удалось сформировать заметку: ${error.message}`,
-                "error",
-            );
-            setStatus(`Не удалось сформировать заметку: ${error.message}`);
-        }
-    } finally {
-        if (currentGenerationVersion === noteGenerationVersion) {
-            generateNoteButton.disabled = false;
-            generateNoteButton.textContent = "Сформировать заметку";
-        }
-    }
-}
-
 async function copyText(
     text,
     button,
     originalLabel,
     statusElement,
-    timeoutName,
 ) {
     if (!text.trim() || text.trim() === INITIAL_TRANSCRIPTION) {
         setActionStatus(statusElement, "Нет текста для копирования", "error");
@@ -575,31 +394,15 @@ async function copyText(
         setActionStatus(statusElement, "Текст скопирован", "success");
         setStatus("Скопировано!");
 
-        const timeout =
-            timeoutName === "transcription"
-                ? copyTranscriptionTimeout
-                : copyNoteTimeout;
-
-        if (timeout) {
-            clearTimeout(timeout);
+        if (copyTranscriptionTimeout !== null) {
+            clearTimeout(copyTranscriptionTimeout);
         }
 
-        const newTimeout = setTimeout(() => {
+        copyTranscriptionTimeout = setTimeout(() => {
             button.textContent = originalLabel;
             setActionStatus(statusElement, "");
-
-            if (timeoutName === "transcription") {
-                copyTranscriptionTimeout = null;
-            } else {
-                copyNoteTimeout = null;
-            }
+            copyTranscriptionTimeout = null;
         }, COPY_FEEDBACK_DURATION);
-
-        if (timeoutName === "transcription") {
-            copyTranscriptionTimeout = newTimeout;
-        } else {
-            copyNoteTimeout = newTimeout;
-        }
     } catch (error) {
         console.error("Не удалось скопировать текст:", error);
 
@@ -613,7 +416,11 @@ async function copyText(
 }
 
 transcription.addEventListener("input", scheduleTranscriptionSave);
-medicalNote.addEventListener("input", scheduleNoteSave);
+
+medicalNote.addEventListener(
+    "input",
+    medicalNoteController.scheduleSave,
+);
 
 startVisitButton.addEventListener("click", async () => {
     if (visitActive) {
@@ -650,7 +457,10 @@ transcribeButton.addEventListener("click", async () => {
     }
 });
 
-generateNoteButton.addEventListener("click", generateMedicalNote);
+generateNoteButton.addEventListener(
+    "click",
+    medicalNoteController.generateMedicalNote,
+);
 
 restoreAudioButton.addEventListener("click", async () => {
     try {
@@ -678,19 +488,13 @@ copyTranscriptionButton.addEventListener("click", () => {
         copyTranscriptionButton,
         "Копировать текст",
         transcriptionStatus,
-        "transcription",
     );
 });
 
-copyNoteButton.addEventListener("click", () => {
-    copyText(
-        medicalNote.value,
-        copyNoteButton,
-        "Копировать заметку",
-        noteStatus,
-        "note",
-    );
-});
+copyNoteButton.addEventListener(
+    "click",
+    medicalNoteController.copyNote,
+);
 
 finishVisitButton.addEventListener("click", async () => {
     if (!sessionId || !visitActive) {
@@ -708,7 +512,7 @@ finishVisitButton.addEventListener("click", async () => {
     const finishingSessionId = sessionId;
 
     // Invalidate in-flight note generation immediately
-    noteGenerationVersion += 1;
+    medicalNoteController.invalidateGeneration();
     visitActive = false;
     finishVisitButton.disabled = true;
     clearPendingSaveTimers();
