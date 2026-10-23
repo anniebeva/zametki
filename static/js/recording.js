@@ -21,6 +21,8 @@ export function createRecordingController({
     let recordingDuration = 0;
     let recordingStarted = false;
 
+    const transcriptionJobs = new Map();
+
     function getState() {
         return mediaRecorder?.state ?? "inactive";
     }
@@ -40,6 +42,39 @@ export function createRecordingController({
         return navigator.mediaDevices.getUserMedia({ audio: true });
     }
 
+    function requestTranscription(sessionId) {
+        const existingJob = transcriptionJobs.get(sessionId);
+
+        if (existingJob) {
+            existingJob.requested = true;
+            return;
+        }
+
+        const job = { requested: true };
+        transcriptionJobs.set(sessionId, job);
+
+        async function run() {
+            while (job.requested) {
+                job.requested = false;
+                await transcribeCurrentSession(sessionId);
+            }
+        }
+
+        job.promise = run()
+            .catch((error) => {
+                console.error("Ошибка транскрибации:", error);
+            })
+            .finally(() => {
+                if (transcriptionJobs.get(sessionId) === job) {
+                    transcriptionJobs.delete(sessionId);
+                }
+
+                if (job.requested) {
+                    requestTranscription(sessionId);
+                }
+            });
+    }
+
     async function processStoppedRecording(currentSessionId) {
         stopStream();
 
@@ -57,16 +92,21 @@ export function createRecordingController({
                 });
             }
 
-            setStatus("Подготавливаем аудио для распознавания…");
+            recordingStarted = false;
+            recordButton.disabled = false;
+            recordButton.textContent = "Продолжить запись";
 
-            await transcribeCurrentSession(currentSessionId);
+            requestTranscription(currentSessionId);
         } catch (error) {
             console.error("Ошибка обработки записи:", error);
             setStatus(`Не удалось обработать запись: ${error.message}`);
         } finally {
             recordingStarted = false;
             recordButton.disabled = false;
-            recordButton.textContent = "Продолжить запись";
+
+            if (getState() !== "recording" && getState() !== "paused") {
+                recordButton.textContent = "Продолжить запись";
+            }
         }
     }
 

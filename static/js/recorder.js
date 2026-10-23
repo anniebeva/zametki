@@ -435,16 +435,13 @@ startVisitButton.addEventListener("click", async () => {
     }
 });
 
-recordButton.addEventListener("click", async () => {
-    recordButton.disabled = true;
 
+recordButton.addEventListener("click", async () => {
     try {
         await recordingController.start();
     } catch (error) {
         console.error("Ошибка записи:", error);
         setStatus(`Не удалось начать запись: ${error.message}`);
-    } finally {
-        recordButton.disabled = false;
     }
 });
 
