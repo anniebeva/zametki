@@ -11,7 +11,8 @@ dependencies = [
     "jinja2 (>=3.1.6,<4.0.0)",
     "faster-whisper (>=1.2.1,<2.0.0)",
     "av (<19)",
-    "python-dotenv (>=1.2.4,<2.0.0)"
+    "python-dotenv (>=1.2.4,<2.0.0)",
+    "groq (>=1.7.0,<2.0.0)"
 ]
 
 

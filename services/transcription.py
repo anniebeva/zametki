@@ -1,18 +1,19 @@
-from faster_whisper import WhisperModel
 
-model = WhisperModel(
-    "small",
-    device="cpu",
-    compute_type="int8",
-)
+from groq import Groq
 
 
 def transcribe_audio(audio_path: str) -> str:
     """Convert an audio recording to text"""
-    segments, info = model.transcribe(
-        audio_path,
-        language="ru",
-    )
+    client = Groq()
 
-    text = " ".join(segment.text.strip() for segment in segments)
-    return text
+    with open(audio_path, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+            file=(audio_path, audio_file.read()),
+            model="whisper-large-v3",
+            language="ru",
+            response_format="json",
+            temperature=0.0,
+        )
+
+    return transcription.text.strip()
+
