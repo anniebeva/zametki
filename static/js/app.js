@@ -33,6 +33,8 @@ import { transcribeCurrentSession as transcribeAudio } from "./transcription.js"
 
 import { createMedicalNoteController } from "./medical-note.js";
 
+import { loadTemplates } from "./templates.js";
+
 let sessionId = null;
 let visitActive = false;
 let recordingDuration = 0;
@@ -58,6 +60,9 @@ const copyNoteButton = document.getElementById("copy-note-button");
 
 const transcriptionStatus = document.getElementById("transcription-status");
 const noteStatus = document.getElementById("note-status");
+
+const templateSelect = document.getElementById("template-select");
+const templateStatus = document.getElementById("template-status");
 
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
 const COPY_FEEDBACK_DURATION = 2000;
@@ -565,6 +570,11 @@ finishVisitButton.addEventListener("click", async () => {
 async function initialize() {
     try {
         await initDB();
+        await loadTemplates({
+            templateSelect,
+            templateStatus,
+            setActionStatus,
+        });
         await restoreLatestVisit();
     } catch (error) {
         console.error("Ошибка инициализации:", error);

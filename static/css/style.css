@@ -41,6 +41,7 @@ button {
 
 button:focus-visible,
 textarea:focus-visible,
+select:focus-visible,
 [contenteditable="true"]:focus-visible,
 a:focus-visible {
     outline: 3px solid rgb(40 107 84 / 25%);
@@ -164,6 +165,36 @@ h2 {
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow);
+}
+
+.template-card {
+    margin-bottom: 20px;
+}
+
+.template-select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 40px 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background-color: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.template-select:hover {
+    border-color: #c6d4ca;
+}
+
+.template-select:focus-visible {
+    border-color: var(--primary);
+    outline: 3px solid rgb(40 107 84 / 15%);
+    outline-offset: 2px;
 }
 
 .visit-card {
