@@ -75,22 +75,27 @@ async function runTransaction(storeName, mode, action) {
         const store = transaction.objectStore(storeName);
 
         let request;
+        let result;
 
         try {
             request = action(store);
+
+            if (request) {
+                request.onsuccess = () => {
+                    result = request.result;
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            }
         } catch (error) {
             transaction.abort();
             reject(error);
             return;
         }
 
-        if (request) {
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        } else {
-            transaction.oncomplete = () => resolve();
-        }
-
+        transaction.oncomplete = () => resolve(result);
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
     });

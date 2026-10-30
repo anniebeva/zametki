@@ -225,7 +225,10 @@ async function restoreCurrentAudio(currentSessionId) {
 }
 
 async function createVisit() {
-    const session = await createVisitSession({ saveSession });
+    const session = await createVisitSession({
+        saveSession,
+        templateId: templateSelect.value || null,
+    });
 
     sessionId = session.sessionId;
     visitActive = true;
@@ -301,6 +304,7 @@ async function restoreLatestVisit() {
     if (!session) {
         sessionId = null;
         visitActive = false;
+        templateSelect.value = "";
 
         resetRecordingTimer();
 
@@ -316,6 +320,7 @@ async function restoreLatestVisit() {
     sessionId = session.sessionId;
     visitActive = true;
     recordingDuration = session.lastSegmentDuration || 0;
+    templateSelect.value = session.templateId || "";
 
     recordingController.setInitialRecordingDuration(recordingDuration);
 
