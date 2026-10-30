@@ -1,6 +1,9 @@
 """Routes for medical note templates"""
 
+"""Routes for medical note templates"""
+
 import json
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +15,12 @@ TEMPLATES_DATA_DIR = Path("templates_data/medical")
 
 def load_template_schema(template_id: str):
     """Load a medical template schema"""
+    if not re.fullmatch(r"[a-zA-Z0-9_-]+", template_id):
+        raise HTTPException(
+            status_code=404,
+            detail="Шаблон не найден",
+        )
+
     schema_path = TEMPLATES_DATA_DIR / template_id / "schema.json"
 
     if not schema_path.is_file():
