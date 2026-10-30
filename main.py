@@ -1,5 +1,5 @@
 """FastAPI application for recording and extracting notes"""
-
+import json
 import tempfile
 from pathlib import Path
 
@@ -12,6 +12,7 @@ from services.notes import generate_note as generate_note_from_transcript
 from services.transcription import transcribe_audio
 
 app = FastAPI()
+TEMPLATES_DATA_DIR = Path("templates_data/medical")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -34,6 +35,28 @@ def home(request: Request):
         context=context,
     )
 
+@app.get("/api/templates")
+def get_templates():
+    """Return available medical note templates"""
+    available_templates = []
+
+    for schema_path in TEMPLATES_DATA_DIR.glob("*/schema.json"):
+        try:
+            with schema_path.open(encoding="utf-8") as file:
+                schema = json.load(file)
+        except (OSError, json.JSONDecodeError) as error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Не удалось прочитать шаблон {schema_path.parent.name}",
+            ) from error
+
+        available_templates.append({
+            "template_id": schema["template_id"],
+            "name": schema["name"],
+            "version": schema["version"],
+        })
+
+    return {"templates": available_templates}
 
 @app.post("/upload-audio")
 async def upload_audio(audio: UploadFile = File(...)):  # noqa: B008

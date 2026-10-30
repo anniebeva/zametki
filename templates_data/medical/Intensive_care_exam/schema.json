@@ -1,0 +1,151 @@
+{
+  "template_id": "intensive_care_exam",
+  "name": "Осмотр дежурного реаниматолога",
+  "version": 1,
+  "sections": [
+    {
+      "id": "general",
+      "title": "Общие сведения",
+      "fields": [
+        {"id": "date", "label": "Дата", "type": "date"},
+        {"id": "time", "label": "Время", "type": "time"},
+        {
+          "id": "examination_type",
+          "label": "Тип осмотра",
+          "type": "select",
+          "options": [
+            "Консультация",
+            "Совместный обход",
+            "Осмотр дежурного реаниматолога"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "general_condition",
+      "title": "Общее состояние",
+      "fields": [
+        {"id": "condition", "label": "Состояние", "type": "text"},
+        {"id": "severity_reason", "label": "Тяжесть обусловлена", "type": "text"},
+        {"id": "consciousness", "label": "Сознание", "type": "text"},
+        {"id": "orientation", "label": "Ориентировка", "type": "text"},
+        {"id": "criticality", "label": "Критичность", "type": "text"},
+        {"id": "commands", "label": "Выполнение команд", "type": "text"},
+        {"id": "gcs", "label": "ШКГ", "type": "number", "unit": "баллов"},
+        {"id": "rass", "label": "RASS", "type": "number"},
+        {"id": "pupils", "label": "Зрачки", "type": "text"},
+        {"id": "neurological_findings", "label": "Очаговая симптоматика и менингеальные знаки", "type": "text"}
+      ]
+    },
+    {
+      "id": "skin",
+      "title": "Кожные покровы и антропометрия",
+      "fields": [
+        {"id": "skin_condition", "label": "Кожные покровы", "type": "text"},
+        {"id": "white_spot_symptom", "label": "Симптом белого пятна", "type": "text"},
+        {"id": "mucous_membranes", "label": "Слизистые", "type": "text"},
+        {"id": "temperature", "label": "Температура", "type": "number", "unit": "°C"},
+        {"id": "hematomas_bedsores", "label": "Гематомы и пролежни", "type": "text"},
+        {"id": "body_build", "label": "Телосложение", "type": "text"},
+        {"id": "weight", "label": "Масса тела", "type": "number", "unit": "кг"},
+        {"id": "height", "label": "Рост", "type": "number", "unit": "см"},
+        {"id": "ideal_body_weight", "label": "ИдМТ", "type": "number", "unit": "кг"},
+        {"id": "bmi", "label": "ИМТ", "type": "number", "unit": "кг/м²"},
+        {"id": "target_tidal_volume", "label": "Целевой ДО", "type": "number", "unit": "мл"}
+      ]
+    },
+    {
+      "id": "respiratory",
+      "title": "Дыхательная система",
+      "fields": [
+        {
+          "id": "breathing_mode",
+          "label": "Режим дыхания",
+          "type": "select",
+          "options": ["Самостоятельное дыхание", "ИВЛ"]
+        },
+        {"id": "respiratory_rate", "label": "ЧДД", "type": "number", "unit": "/мин"},
+        {"id": "spo2", "label": "SpO2", "type": "number", "unit": "%"},
+        {"id": "oxygen_support", "label": "Дотация кислорода", "type": "text"},
+        {"id": "ventilator", "label": "Аппарат ИВЛ", "type": "text"},
+        {"id": "ventilation_mode", "label": "Режим ИВЛ", "type": "text"},
+        {"id": "airway", "label": "ЭТТ/ТСТ", "type": "text"},
+        {"id": "pins", "label": "Pins", "type": "number", "unit": "cmH2O"},
+        {"id": "psup", "label": "Psup", "type": "number", "unit": "cmH2O"},
+        {"id": "peep", "label": "PEEP", "type": "number", "unit": "cmH2O"},
+        {"id": "fio2", "label": "FiO2", "type": "number", "unit": "%"},
+        {"id": "ventilator_rr", "label": "ЧД на ИВЛ", "type": "number", "unit": "/мин"},
+        {"id": "ventilator_spo2", "label": "SpO2 на ИВЛ", "type": "number", "unit": "%"},
+        {"id": "tidal_volume", "label": "Vt", "type": "number"},
+        {"id": "respiratory_auscultation", "label": "Аускультация", "type": "text"}
+      ]
+    },
+    {
+      "id": "cardiovascular",
+      "title": "Гемодинамика",
+      "fields": [
+        {
+          "id": "hemodynamic_status",
+          "label": "Состояние гемодинамики",
+          "type": "select",
+          "options": ["Стабильная", "Нестабильная"]
+        },
+        {"id": "vasopressor", "label": "Вазопрессор", "type": "text"},
+        {"id": "vasopressor_dose", "label": "Доза вазопрессора", "type": "number", "unit": "мкг/кг/мин"},
+        {"id": "blood_pressure", "label": "АД", "type": "text", "unit": "мм рт. ст."},
+        {"id": "ecg_rhythm", "label": "Ритм по ЭКГ", "type": "text"},
+        {"id": "heart_rate", "label": "ЧСС", "type": "number", "unit": "/мин"},
+        {"id": "pulse", "label": "Пульс", "type": "text"},
+        {"id": "heart_sounds", "label": "Сердечные тоны", "type": "text"}
+      ]
+    },
+    {
+      "id": "laboratory",
+      "title": "Лабораторные данные",
+      "fields": [
+        {"id": "lab_date", "label": "Дата исследований", "type": "date"},
+        {"id": "wbc", "label": "Лейкоциты", "type": "number", "unit": "тыс./мкл"},
+        {"id": "hemoglobin", "label": "Гемоглобин", "type": "number", "unit": "г/л"},
+        {"id": "platelets", "label": "Тромбоциты", "type": "number", "unit": "×10⁹/л"},
+        {"id": "erythrocytes", "label": "Эритроциты", "type": "number", "unit": "×10¹²/л"},
+        {"id": "hematocrit", "label": "Гематокрит", "type": "number", "unit": "%"},
+        {"id": "alt", "label": "АЛТ", "type": "number", "unit": "Ед/л"},
+        {"id": "ast", "label": "АСТ", "type": "number", "unit": "Ед/л"},
+        {"id": "bilirubin_total", "label": "Билирубин общий", "type": "number", "unit": "мкмоль/л"},
+        {"id": "bilirubin_direct", "label": "Билирубин прямой", "type": "number", "unit": "мкмоль/л"},
+        {"id": "urea", "label": "Мочевина", "type": "number", "unit": "ммоль/л"},
+        {"id": "creatinine", "label": "Креатинин", "type": "number", "unit": "мкмоль/л"},
+        {"id": "gfr", "label": "СКФ", "type": "number", "unit": "мл/мин"},
+        {"id": "crp", "label": "СРБ", "type": "number", "unit": "мг/л"},
+        {"id": "potassium", "label": "Калий", "type": "number", "unit": "ммоль/л"},
+        {"id": "urine_protein", "label": "Белок в ОАМ", "type": "number", "unit": "г/л"},
+        {"id": "urine_leukocytes", "label": "Лейкоциты в ОАМ", "type": "number"},
+        {"id": "urine_erythrocytes", "label": "Эритроциты в ОАМ", "type": "number"},
+        {"id": "urine_bacteria", "label": "Бактерии в ОАМ", "type": "number"},
+        {"id": "ph", "label": "pH", "type": "number"},
+        {"id": "po2", "label": "pO2", "type": "number", "unit": "mmHg"},
+        {"id": "pco2", "label": "pCO2", "type": "number", "unit": "mmHg"},
+        {"id": "base_excess", "label": "BE", "type": "number"},
+        {"id": "hco3", "label": "HCO3", "type": "number", "unit": "mmol/L"},
+        {"id": "aptt", "label": "АЧТВ", "type": "number", "unit": "сек."},
+        {"id": "inr", "label": "МНО", "type": "number"},
+        {"id": "prothrombin", "label": "Протромбин", "type": "number", "unit": "%"},
+        {"id": "fibrinogen", "label": "Фибриноген", "type": "number", "unit": "г/л"},
+        {"id": "d_dimer", "label": "Д-димер", "type": "number", "unit": "нг/мл"}
+      ]
+    },
+    {
+      "id": "assessment",
+      "title": "Диагностическое представление и лечение",
+      "fields": [
+        {"id": "diagnostic_assessment", "label": "Диагностическое представление", "type": "textarea"},
+        {"id": "treatment", "label": "Лечение по карте интенсивной терапии", "type": "textarea"},
+        {"id": "recommendations", "label": "Рекомендации", "type": "textarea"}
+      ]
+    }
+  ],
+  "static_text": [
+    "С анамнезом и историей болезни ознакомлены.",
+    "В соответствии с приказом МЗ РФ от 24 ноября 2021 г. № 1094н назначение 5 и более препаратов обусловлено тяжестью состояния пациента и согласовано с заведующим отделением."
+  ]
+}
