@@ -1,4 +1,5 @@
 """FastAPI application for recording and extracting notes"""
+
 import json
 import tempfile
 from pathlib import Path
@@ -35,6 +36,7 @@ def home(request: Request):
         context=context,
     )
 
+
 @app.get("/api/templates")
 def get_templates():
     """Return available medical note templates"""
@@ -50,13 +52,16 @@ def get_templates():
                 detail=f"Не удалось прочитать шаблон {schema_path.parent.name}",
             ) from error
 
-        available_templates.append({
-            "template_id": schema["template_id"],
-            "name": schema["name"],
-            "version": schema["version"],
-        })
+        available_templates.append(
+            {
+                "template_id": schema["template_id"],
+                "name": schema["name"],
+                "version": schema["version"],
+            }
+        )
 
     return {"templates": available_templates}
+
 
 @app.post("/upload-audio")
 async def upload_audio(audio: UploadFile = File(...)):  # noqa: B008

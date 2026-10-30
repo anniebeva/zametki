@@ -1,4 +1,3 @@
-
 from groq import Groq
 
 
@@ -16,4 +15,3 @@ def transcribe_audio(audio_path: str) -> str:
         )
 
     return transcription.text.strip()
-
