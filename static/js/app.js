@@ -45,6 +45,9 @@ let recordingDuration = 0;
 let copyTranscriptionTimeout = null;
 let transcriptionSaveTimeout = null;
 let templateRequestId = 0;
+let activeTemplateId = null;
+let templateSaveTimeout = null;
+let templateSaveQueue = Promise.resolve();
 
 const recordButton = document.getElementById("record-button");
 const startVisitButton = document.getElementById("start-visit-button");
@@ -102,9 +105,107 @@ function setActionStatus(element, message, type = "") {
     element.classList.toggle("is-success", type === "success");
 }
 
+function collectTemplateData() {
+    const data = {};
+
+    const fields = structuredNote.querySelectorAll(".field-control");
+
+    for (const field of fields) {
+        if (!field.name) {
+            continue;
+        }
+
+        data[field.name] = field.value;
+    }
+
+    return data;
+}
+
+
+function restoreTemplateData(data = {}) {
+    const fields = structuredNote.querySelectorAll(".field-control");
+
+    for (const field of fields) {
+        if (Object.hasOwn(data, field.name)) {
+            field.value = data[field.name];
+        }
+    }
+}
+
+
+async function saveTemplateData(templateId) {
+    if (!sessionId || !visitActive || !templateId) {
+        return;
+    }
+
+    const session = await getSession(sessionId);
+
+    if (!session || session.status !== "active") {
+        return;
+    }
+
+    const templateData = session.templateData || {};
+
+    templateData[templateId] = collectTemplateData();
+
+    await saveSession({
+        ...session,
+        templateId: templateSelect.value || null,
+        templateData,
+    });
+}
+
+
+function scheduleTemplateSave() {
+    clearTimeout(templateSaveTimeout);
+
+    templateSaveTimeout = setTimeout(() => {
+        void saveTemplateData(activeTemplateId).catch((error) => {
+            console.error("Не удалось сохранить поля шаблона:", error);
+            setActionStatus(
+                templateFormStatus,
+                "Не удалось сохранить заполненные поля",
+                "error",
+            );
+        });
+    }, EDIT_SAVE_DELAY);
+}
+
 async function renderSelectedTemplate() {
     const templateId = templateSelect.value;
     const requestId = ++templateRequestId;
+
+    // Сохраняем значения предыдущего шаблона до переключения
+    if (activeTemplateId) {
+        clearTimeout(templateSaveTimeout);
+
+        const previousTemplateId = activeTemplateId;
+        const previousTemplateData = collectTemplateData();
+
+        activeTemplateId = null;
+
+        try {
+            await saveTemplateData(
+                previousTemplateId,
+                previousTemplateData,
+            );
+        } catch (error) {
+            console.error(
+                "Не удалось сохранить предыдущий шаблон:",
+                error,
+            );
+
+            setActionStatus(
+                templateFormStatus,
+                "Не удалось сохранить заполненные поля",
+                "error",
+            );
+        }
+    }
+
+    if (requestId !== templateRequestId) {
+        return;
+    }
 
     if (!templateId) {
         medicalNoteSection.hidden = false;
@@ -113,6 +214,8 @@ async function renderSelectedTemplate() {
         noteTitle.textContent = "Медицинская заметка";
         noteSubtitle.textContent =
             "Сформируйте заметку на основе транскрипции или отредактируйте её";
+
+        activeTemplateId = null;
 
         setActionStatus(templateFormStatus, "");
         setActionStatus(templateStatus, "");
@@ -140,6 +243,33 @@ async function renderSelectedTemplate() {
         }
 
         renderTemplateForm(schema, structuredNote);
+
+        // Получаем актуальные данные сессии после сохранения предыдущего шаблона
+        if (sessionId && visitActive) {
+            const session = await getSession(sessionId);
+
+            if (
+                requestId !== templateRequestId ||
+                templateSelect.value !== templateId
+            ) {
+                return;
+            }
+
+            restoreTemplateData(
+                session?.templateData?.[templateId] || {},
+            );
+
+            // Сохраняем выбранный шаблон в сессии
+            if (session && session.status === "active") {
+                await saveSession({
+                    ...session,
+                    templateId,
+                });
+            }
+        }
+
+        activeTemplateId = templateId;
+
         setActionStatus(templateFormStatus, "");
         setActionStatus(templateStatus, "");
     } catch (error) {
@@ -150,6 +280,7 @@ async function renderSelectedTemplate() {
         }
 
         structuredNote.replaceChildren();
+        activeTemplateId = null;
 
         setActionStatus(
             templateFormStatus,
@@ -729,6 +860,9 @@ finishVisitButton.addEventListener("click", async () => {
         setStatus("Не удалось завершить приём");
     }
 });
+
+structuredNote.addEventListener("input", scheduleTemplateSave);
+structuredNote.addEventListener("change", scheduleTemplateSave);
 
 async function initialize() {
     try {

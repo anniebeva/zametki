@@ -5,6 +5,7 @@ export async function createVisitSession({ saveSession, templateId }) {
         sessionId: crypto.randomUUID(),
         status: "active",
         templateId: templateId || null,
+        templateData: {},
 
         audioVersion: 0,
 
@@ -46,10 +47,13 @@ export async function restoreLatestSession({
     let session = await getSession(sessionId);
 
     if (!session) {
+        const now = Date.now();
+
         session = {
             sessionId,
             status: "active",
             templateId: null,
+            templateData: {},
 
             audioVersion: 0,
 
@@ -67,8 +71,8 @@ export async function restoreLatestSession({
             elapsedMilliseconds: 0,
             lastSegmentDuration: 0,
 
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: now,
+            updatedAt: now,
         };
 
         await saveSession(session);
@@ -80,6 +84,7 @@ export async function restoreLatestSession({
 
     const updatedSession = {
         templateId: null,
+        templateData: {},
 
         audioVersion: 0,
 
