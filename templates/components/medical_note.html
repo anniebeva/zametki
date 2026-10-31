@@ -1,48 +1,73 @@
-<section
-    class="card note-card"
-    aria-labelledby="note-title"
->
+<section class="card note-card" aria-labelledby="note-title">
     <div class="card-heading">
-        <div
-            class="section-icon section-icon-muted"
-            aria-hidden="true"
-        >
+        <div class="section-icon section-icon-muted" aria-hidden="true">
             <span>02</span>
         </div>
+
         <div>
             <h2 id="note-title">Медицинская заметка</h2>
-            <p class="card-subtitle">
-                Черновик для проверки врачом
+            <p id="note-subtitle" class="card-subtitle">
+                Сформируйте заметку на основе транскрипции или отредактируйте её
             </p>
         </div>
     </div>
 
-    <textarea
-        id="medical-note"
-        rows="12"
-        placeholder="Здесь появится черновик медицинской заметки"
-    ></textarea>
+    <!-- Свободная медицинская заметка -->
+    <div id="medical-note-section">
+        <div class="note-actions">
+            <button
+                id="generate-note-button"
+                class="button button-primary"
+                type="button"
+            >
+                Сформировать заметку
+            </button>
 
-    <p
-        id="note-status"
-        class="action-status"
-        aria-live="polite"
-    ></p>
+            <button
+                id="copy-note-button"
+                class="button button-secondary"
+                type="button"
+            >
+                Копировать заметку
+            </button>
+        </div>
 
-    <div class="button-row">
-        <button
-            id="generate-note-button"
-            class="button button-primary"
-            type="button"
-        >
-            Сформировать заметку
-        </button>
-        <button
-            id="copy-note-button"
-            class="button button-secondary"
-            type="button"
-        >
-            Копировать заметку
-        </button>
+        <p
+            id="note-status"
+            class="action-status"
+            aria-live="polite"
+        ></p>
+
+        <textarea
+            id="medical-note"
+            class="transcription-text"
+            placeholder="Здесь появится медицинская заметка"
+        ></textarea>
+    </div>
+
+    <!-- Структурированная форма -->
+    <div id="structured-note-mode" hidden>
+        <div class="template-form-actions">
+            <button
+                id="fill-template-button"
+                class="button button-primary"
+                type="button"
+                disabled
+            >
+                Заполнить по транскрипции
+            </button>
+        </div>
+
+        <p
+            id="template-form-status"
+            class="action-status"
+            aria-live="polite"
+        ></p>
+
+        <div id="structured-note">
+            <p class="card-subtitle">
+                Выберите шаблон, чтобы отобразить поля медицинской формы
+            </p>
+        </div>
     </div>
 </section>

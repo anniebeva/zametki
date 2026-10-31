@@ -684,3 +684,142 @@ h2 {
     cursor: wait;
     opacity: 0.7;
 }
+
+/* Structured form */
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-section:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin: 0 0 2px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.field-label {
+    display: block;
+    margin: 0;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.field-control,
+#medical-note {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: #fcfdfc;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    transition:
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        background-color 150ms ease;
+}
+
+.field-control:hover,
+#medical-note:hover {
+    border-color: #c6d4ca;
+}
+
+.field-control:focus,
+#medical-note:focus {
+    border-color: var(--primary);
+    outline: none;
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgb(40 107 84 / 12%);
+}
+
+.field-control::placeholder,
+#medical-note::placeholder {
+    color: #89948d;
+}
+
+.field-control[type="number"],
+.field-control[type="date"],
+.field-control[type="time"] {
+    color-scheme: light;
+}
+
+textarea.field-control {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.field-unit {
+    margin-top: -2px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.form-static-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-muted);
+}
+
+.form-static-text p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* Free medical note */
+
+#medical-note {
+    min-height: 260px;
+    margin-top: 14px;
+    resize: vertical;
+}
+
+#structured-note {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (max-width: 420px) {
+    .form-section {
+        gap: 12px;
+        padding-bottom: 16px;
+    }
+
+    .field-control,
+    #medical-note {
+        font-size: 14px;
+    }
+
+    #medical-note {
+        min-height: 220px;
+    }
+}

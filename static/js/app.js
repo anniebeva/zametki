@@ -31,15 +31,20 @@ import {
 
 import { transcribeCurrentSession as transcribeAudio } from "./transcription.js";
 
-import { createMedicalNoteController } from "./medical-note.js";
+import {
+    loadTemplates,
+    loadTemplateSchema,
+    renderTemplateForm,
+} from "./templates.js";
 
-import { loadTemplates } from "./templates.js";
+import { createMedicalNoteController } from "./medical-note.js";
 
 let sessionId = null;
 let visitActive = false;
 let recordingDuration = 0;
 let copyTranscriptionTimeout = null;
 let transcriptionSaveTimeout = null;
+let templateRequestId = 0;
 
 const recordButton = document.getElementById("record-button");
 const startVisitButton = document.getElementById("start-visit-button");
@@ -49,20 +54,29 @@ const restoreAudioButton = document.getElementById("restore-audio-button");
 const status = document.getElementById("status");
 const transcription = document.getElementById("transcription");
 const audioPlayback = document.getElementById("audio-playback");
-const medicalNote = document.getElementById("medical-note");
 
 const transcribeButton = document.getElementById("transcribe-button");
-const generateNoteButton = document.getElementById("generate-note-button");
 const copyTranscriptionButton = document.getElementById(
     "copy-transcription-button",
 );
-const copyNoteButton = document.getElementById("copy-note-button");
 
 const transcriptionStatus = document.getElementById("transcription-status");
-const noteStatus = document.getElementById("note-status");
 
 const templateSelect = document.getElementById("template-select");
 const templateStatus = document.getElementById("template-status");
+
+const structuredNote = document.getElementById("structured-note");
+
+const medicalNote = document.getElementById("medical-note");
+const medicalNoteSection = document.getElementById("medical-note-section");
+const generateNoteButton = document.getElementById("generate-note-button");
+const copyNoteButton = document.getElementById("copy-note-button");
+const noteStatus = document.getElementById("note-status");
+
+const noteTitle = document.getElementById("note-title");
+const noteSubtitle = document.getElementById("note-subtitle");
+const structuredNoteMode = document.getElementById("structured-note-mode");
+const templateFormStatus = document.getElementById("template-form-status");
 
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
 const COPY_FEEDBACK_DURATION = 2000;
@@ -87,39 +101,61 @@ function setActionStatus(element, message, type = "") {
     element.classList.toggle("is-success", type === "success");
 }
 
-async function saveCurrentSessionChanges(changes, targetSessionId = sessionId) {
-    if (
-        !targetSessionId ||
-        !visitActive ||
-        sessionId !== targetSessionId
-    ) {
-        return false;
+async function renderSelectedTemplate() {
+    const templateId = templateSelect.value;
+    const requestId = ++templateRequestId;
+
+    if (!templateId) {
+        medicalNoteSection.hidden = false;
+        structuredNoteMode.hidden = true;
+
+        noteTitle.textContent = "Медицинская заметка";
+        noteSubtitle.textContent =
+            "Сформируйте заметку на основе транскрипции или отредактируйте её";
+
+        setActionStatus(templateFormStatus, "");
+        setActionStatus(templateStatus, "");
+
+        return;
     }
 
-    const session = await getSession(targetSessionId);
+    medicalNoteSection.hidden = true;
+    structuredNoteMode.hidden = false;
 
-    if (
-        !session ||
-        session.status !== "active" ||
-        !visitActive ||
-        sessionId !== targetSessionId
-    ) {
-        return false;
+    noteTitle.textContent = "Медицинская форма";
+    noteSubtitle.textContent =
+        "Заполните поля выбранного шаблона и проверьте данные перед формированием документа";
+
+    try {
+        setActionStatus(templateFormStatus, "Загружаем форму…");
+
+        const schema = await loadTemplateSchema(templateId);
+
+        if (
+            requestId !== templateRequestId ||
+            templateSelect.value !== templateId
+        ) {
+            return;
+        }
+
+        renderTemplateForm(schema, structuredNote);
+        setActionStatus(templateFormStatus, "");
+        setActionStatus(templateStatus, "");
+    } catch (error) {
+        console.error("Не удалось загрузить форму шаблона:", error);
+
+        if (requestId !== templateRequestId) {
+            return;
+        }
+
+        structuredNote.replaceChildren();
+
+        setActionStatus(
+            templateFormStatus,
+            "Не удалось загрузить поля шаблона",
+            "error",
+        );
     }
-
-    await saveSession({
-        ...session,
-        ...changes,
-        updatedAt: Date.now(),
-    });
-
-    return true;
-}
-
-function getTranscriptionText() {
-    const text = transcription.textContent.trim();
-
-    return text === INITIAL_TRANSCRIPTION ? "" : text;
 }
 
 function clearPendingSaveTimers() {
@@ -127,13 +163,11 @@ function clearPendingSaveTimers() {
         clearTimeout(transcriptionSaveTimeout);
         transcriptionSaveTimeout = null;
     }
-
-    medicalNoteController.clearPendingSaveTimer();
 }
 
 async function saveEditedTranscription() {
     const currentSessionId = sessionId;
-    const text = getTranscriptionText();
+    const text = transcription.textContent.trim();
 
     try {
         const session = await getSession(currentSessionId);
@@ -149,12 +183,10 @@ async function saveEditedTranscription() {
 
         await saveSession({
             ...session,
-            transcription: text,
+            transcription: text === INITIAL_TRANSCRIPTION ? "" : text,
             transcriptionStatus: "done",
             transcriptionError: "",
             transcriptionVersion: (session.transcriptionVersion || 0) + 1,
-            noteStatus: session.medicalNote ? "stale" : "idle",
-            noteError: "",
             updatedAt: Date.now(),
         });
 
@@ -165,6 +197,7 @@ async function saveEditedTranscription() {
         );
     } catch (error) {
         console.error("Не удалось сохранить транскрипцию:", error);
+
         setActionStatus(
             transcriptionStatus,
             "Не удалось сохранить исправленный текст",
@@ -190,30 +223,6 @@ function scheduleTranscriptionSave() {
     }, EDIT_SAVE_DELAY);
 }
 
-async function flushPendingTranscriptionSave() {
-    if (transcriptionSaveTimeout !== null) {
-        clearTimeout(transcriptionSaveTimeout);
-        transcriptionSaveTimeout = null;
-        await saveEditedTranscription();
-    }
-}
-
-const medicalNoteController = createMedicalNoteController({
-    getSessionId: () => sessionId,
-    isVisitActive: () => visitActive,
-    getTranscriptionText,
-    flushPendingTranscriptionSave,
-    getSession,
-    saveSession,
-    saveCurrentSessionChanges,
-    setStatus,
-    setActionStatus,
-    noteStatus,
-    medicalNote,
-    generateNoteButton,
-    copyNoteButton,
-});
-
 async function restoreCurrentAudio(currentSessionId) {
     return restoreAudio({
         sessionId: currentSessionId,
@@ -234,30 +243,55 @@ async function createVisit() {
     visitActive = true;
     recordingDuration = 0;
 
-    medicalNoteController.invalidateGeneration();
     clearPendingSaveTimers();
 
     recordingController.reset();
     recordingController.setInitialRecordingDuration(0);
 
     resetRecordingTimer();
-
-    transcription.textContent = INITIAL_TRANSCRIPTION;
-    medicalNote.value = "";
-
-    setActionStatus(transcriptionStatus, "");
-    setActionStatus(noteStatus, "");
-
-    revokeCurrentAudioUrl();
-    audioPlayback.removeAttribute("src");
-    audioPlayback.hidden = true;
-    audioPlayback.load();
+    resetTranscription();
+    resetMedicalNote();
+    resetAudioPlayback();
 
     recordButton.disabled = false;
     recordButton.textContent = "Начать запись";
 
+    restoreAudioButton.textContent = "Восстановить аудиозапись";
+
     updateVisitControls();
     setStatus("Приём начат. Можно начинать запись");
+}
+
+async function flushPendingTranscriptionSave() {
+    if (transcriptionSaveTimeout !== null) {
+        clearTimeout(transcriptionSaveTimeout);
+        transcriptionSaveTimeout = null;
+        await saveEditedTranscription();
+    }
+}
+
+async function saveCurrentSessionChanges(changes, targetSessionId = sessionId) {
+    if (!targetSessionId) {
+        return;
+    }
+
+    const session = await getSession(targetSessionId);
+
+    if (!session || session.status !== "active") {
+        return;
+    }
+
+    await saveSession({
+        ...session,
+        ...changes,
+        updatedAt: Date.now(),
+    });
+}
+
+function getTranscriptionText() {
+    const text = transcription.textContent.trim();
+
+    return text === INITIAL_TRANSCRIPTION ? "" : text;
 }
 
 const recordingController = createRecordingController({
@@ -294,43 +328,69 @@ const recordingController = createRecordingController({
     },
 });
 
-async function restoreLatestVisit() {
-    const session = await loadLatestSession({
-        getLatestSessionId,
-        getSession,
-        saveSession,
-    });
+const medicalNoteController = createMedicalNoteController({
+    getSessionId: () => sessionId,
+    isVisitActive: () => visitActive,
+    getTranscriptionText,
+    flushPendingTranscriptionSave,
+    getSession,
+    saveSession,
+    saveCurrentSessionChanges,
+    setStatus,
+    setActionStatus,
+    noteStatus,
+    medicalNote,
+    generateNoteButton,
+    copyNoteButton,
+});
 
-    if (!session) {
-        sessionId = null;
-        visitActive = false;
-        templateSelect.value = "";
 
-        resetRecordingTimer();
+function resetMedicalNote() {
+    medicalNoteController.invalidateGeneration();
+    medicalNoteController.clearPendingSaveTimer();
 
-        transcription.textContent = INITIAL_TRANSCRIPTION;
-        medicalNote.value = "";
+    medicalNote.value = "";
+    setActionStatus(noteStatus, "");
+}
 
-        updateVisitControls();
-        setStatus("Запись не начата");
-
-        return;
-    }
-
-    sessionId = session.sessionId;
-    visitActive = true;
-    recordingDuration = session.lastSegmentDuration || 0;
-    templateSelect.value = session.templateId || "";
-
-    recordingController.setInitialRecordingDuration(recordingDuration);
-
-    setElapsedTime(session.elapsedMilliseconds || 0);
-
-    transcription.textContent =
-        session.transcription || INITIAL_TRANSCRIPTION;
-
+function restoreMedicalNote(session) {
     medicalNote.value = session.medicalNote || "";
 
+    if (session.noteStatus === "error") {
+        setActionStatus(
+            noteStatus,
+            session.noteError || "Ошибка формирования заметки",
+            "error",
+        );
+    } else if (session.noteStatus === "stale") {
+        setActionStatus(
+            noteStatus,
+            "Транскрипция изменилась. Заметку нужно проверить.",
+        );
+    } else if (
+        session.noteStatus === "done" ||
+        session.noteStatus === "edited"
+    ) {
+        setActionStatus(noteStatus, "Заметка восстановлена");
+    } else {
+        setActionStatus(noteStatus, "");
+    }
+}
+
+function resetAudioPlayback() {
+    revokeCurrentAudioUrl();
+
+    audioPlayback.removeAttribute("src");
+    audioPlayback.hidden = true;
+    audioPlayback.load();
+}
+
+function resetTranscription() {
+    transcription.textContent = INITIAL_TRANSCRIPTION;
+    setActionStatus(transcriptionStatus, "");
+}
+
+function restoreTranscriptionStatus(session) {
     if (session.transcriptionStatus === "error") {
         setActionStatus(
             transcriptionStatus,
@@ -342,23 +402,64 @@ async function restoreLatestVisit() {
             transcriptionStatus,
             "Аудио изменилось. Требуется распознавание.",
         );
+    } else {
+        setActionStatus(transcriptionStatus, "");
+    }
+}
+
+async function restoreLatestVisit() {
+    const session = await loadLatestSession({
+        getLatestSessionId,
+        getSession,
+        saveSession,
+    });
+
+    if (!session) {
+        sessionId = null;
+        visitActive = false;
+        recordingDuration = 0;
+
+        templateSelect.value = "";
+        await renderSelectedTemplate();
+
+        resetMedicalNote();
+        resetTranscription();
+        resetAudioPlayback();
+        resetRecordingTimer();
+
+        recordingController.reset();
+        recordingController.setInitialRecordingDuration(0);
+
+        recordButton.disabled = false;
+        recordButton.textContent = "Начать запись";
+        restoreAudioButton.textContent = "Восстановить аудиозапись";
+
+        updateVisitControls();
+        setStatus("Запись не начата");
+
+        return;
     }
 
-    if (session.noteStatus === "error") {
-        setActionStatus(
-            noteStatus,
-            session.noteError || "Ошибка генерации заметки",
-            "error",
-        );
-    } else if (session.noteStatus === "stale") {
-        setActionStatus(
-            noteStatus,
-            "Транскрипция изменилась. Проверьте заметку.",
-        );
-    }
+    sessionId = session.sessionId;
+    visitActive = true;
+    recordingDuration = session.lastSegmentDuration || 0;
+
+    templateSelect.value = session.templateId || "";
+    await renderSelectedTemplate();
+
+    recordingController.setInitialRecordingDuration(recordingDuration);
+    setElapsedTime(session.elapsedMilliseconds || 0);
+
+    transcription.textContent =
+        session.transcription || INITIAL_TRANSCRIPTION;
+
+    restoreMedicalNote(session);
+
+    restoreTranscriptionStatus(session);
 
     await restoreCurrentAudio(sessionId);
 
+    recordButton.disabled = false;
     recordButton.textContent = "Продолжить запись";
     restoreAudioButton.textContent = "Обновить аудиозапись";
 
@@ -427,11 +528,6 @@ async function copyText(
 
 transcription.addEventListener("input", scheduleTranscriptionSave);
 
-medicalNote.addEventListener(
-    "input",
-    medicalNoteController.scheduleSave,
-);
-
 startVisitButton.addEventListener("click", async () => {
     if (visitActive) {
         return;
@@ -445,6 +541,9 @@ startVisitButton.addEventListener("click", async () => {
     }
 });
 
+templateSelect.addEventListener("change", () => {
+    void renderSelectedTemplate();
+});
 
 recordButton.addEventListener("click", async () => {
     try {
@@ -463,11 +562,6 @@ transcribeButton.addEventListener("click", async () => {
         setStatus("Не удалось распознать аудио");
     }
 });
-
-generateNoteButton.addEventListener(
-    "click",
-    medicalNoteController.generateMedicalNote,
-);
 
 restoreAudioButton.addEventListener("click", async () => {
     try {
@@ -498,10 +592,37 @@ copyTranscriptionButton.addEventListener("click", () => {
     );
 });
 
-copyNoteButton.addEventListener(
-    "click",
-    medicalNoteController.copyNote,
-);
+medicalNote.addEventListener("input", () => {
+    medicalNoteController.scheduleSave();
+});
+
+generateNoteButton.addEventListener("click", async () => {
+    await medicalNoteController.generateMedicalNote();
+});
+
+copyNoteButton.addEventListener("click", async () => {
+    await medicalNoteController.copyNote();
+});
+
+function resetVisitInterface() {
+    recordingController.reset();
+
+    sessionId = null;
+    visitActive = false;
+    recordingDuration = 0;
+
+    resetRecordingTimer();
+    resetTranscription();
+    resetMedicalNote();
+    resetAudioPlayback();
+
+    recordButton.disabled = false;
+    recordButton.textContent = "Начать запись";
+
+    restoreAudioButton.textContent = "Восстановить аудиозапись";
+
+    updateVisitControls();
+}
 
 finishVisitButton.addEventListener("click", async () => {
     if (!sessionId || !visitActive) {
@@ -518,11 +639,12 @@ finishVisitButton.addEventListener("click", async () => {
 
     const finishingSessionId = sessionId;
 
-    // Invalidate in-flight note generation immediately
-    medicalNoteController.invalidateGeneration();
     visitActive = false;
     finishVisitButton.disabled = true;
+
     clearPendingSaveTimers();
+    medicalNoteController.invalidateGeneration();
+    medicalNoteController.clearPendingSaveTimer();
 
     try {
         await recordingController.stopAndWait();
@@ -532,35 +654,15 @@ finishVisitButton.addEventListener("click", async () => {
             deleteSessionData,
         });
 
-        recordingController.reset();
-        revokeCurrentAudioUrl();
+        resetVisitInterface();
 
-        audioPlayback.removeAttribute("src");
-        audioPlayback.hidden = true;
-        audioPlayback.load();
-
-        sessionId = null;
-        recordingDuration = 0;
-
-        resetRecordingTimer();
-
-        transcription.textContent = INITIAL_TRANSCRIPTION;
-        medicalNote.value = "";
-
-        setActionStatus(transcriptionStatus, "");
-        setActionStatus(noteStatus, "");
-
-        recordButton.disabled = false;
-        recordButton.textContent = "Начать запись";
-        restoreAudioButton.textContent = "Восстановить аудиозапись";
-
-        updateVisitControls();
         setStatus("Приём завершён");
     } catch (error) {
         console.error("Не удалось завершить приём:", error);
 
-        // The session may still exist if deletion failed
-        const session = await getSession(finishingSessionId).catch(() => null);
+        const session = await getSession(finishingSessionId).catch(
+            () => null,
+        );
 
         if (session && session.status === "active") {
             sessionId = finishingSessionId;
@@ -575,11 +677,13 @@ finishVisitButton.addEventListener("click", async () => {
 async function initialize() {
     try {
         await initDB();
+
         await loadTemplates({
             templateSelect,
             templateStatus,
             setActionStatus,
         });
+
         await restoreLatestVisit();
     } catch (error) {
         console.error("Ошибка инициализации:", error);
