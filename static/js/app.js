@@ -77,6 +77,7 @@ const noteTitle = document.getElementById("note-title");
 const noteSubtitle = document.getElementById("note-subtitle");
 const structuredNoteMode = document.getElementById("structured-note-mode");
 const templateFormStatus = document.getElementById("template-form-status");
+const copyTemplateButton = document.getElementById("copy-template-button");
 
 const INITIAL_TRANSCRIPTION = "Здесь появится распознанный текст";
 const COPY_FEEDBACK_DURATION = 2000;
@@ -602,6 +603,61 @@ generateNoteButton.addEventListener("click", async () => {
 
 copyNoteButton.addEventListener("click", async () => {
     await medicalNoteController.copyNote();
+});
+
+copyTemplateButton.addEventListener("click", () => {
+    const sections = structuredNote.querySelectorAll(".form-section");
+    const lines = [];
+
+    for (const section of sections) {
+        const heading = section.querySelector("h3")?.textContent.trim();
+        const fields = section.querySelectorAll(".form-field");
+        const sectionLines = [];
+
+        for (const field of fields) {
+            const label = field.querySelector("label")?.textContent.trim();
+            const input = field.querySelector(".field-control");
+            const unit = field.querySelector(".field-unit")?.textContent.trim();
+
+            if (!label || !input || !input.value.trim()) {
+                continue;
+            }
+
+            const value = input.value.trim();
+            const formattedValue = unit
+                ? `${value} ${unit}`
+                : value;
+
+            sectionLines.push(`${label}: ${formattedValue}`);
+        }
+
+        if (sectionLines.length) {
+            if (lines.length) {
+                lines.push("");
+            }
+
+            if (heading) {
+                lines.push(heading);
+            }
+
+            lines.push(...sectionLines);
+        }
+    }
+
+    if (!lines.length) {
+        setActionStatus(
+            templateFormStatus,
+            "Нет заполненных полей для копирования",
+        );
+        return;
+    }
+
+    copyText(
+        lines.join("\n"),
+        copyTemplateButton,
+        "Копировать заполненные поля",
+        templateFormStatus,
+    );
 });
 
 function resetVisitInterface() {
