@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, UploadFile
 
 from services.transcription import transcribe_audio
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 
 @router.post("/upload-audio")
