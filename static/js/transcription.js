@@ -65,7 +65,7 @@ export async function transcribeCurrentSession({
 
         setStatus("Распознаём аудио…");
 
-        const response = await fetch("/upload-audio", {
+        const response = await fetch("/api/upload-audio", {
             method: "POST",
             body: formData,
         });
