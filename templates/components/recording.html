@@ -1,0 +1,67 @@
+<!-- Запись разговора -->
+<section
+    class="card recording-card"
+    aria-labelledby="recording-title"
+>
+    <div class="card-heading">
+        <div class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+                <rect
+                    x="8" y="3" width="8" height="13" rx="4"
+                    stroke="currentColor" stroke-width="1.8"
+                />
+                <path
+                    d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"
+                    stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round"
+                />
+            </svg>
+        </div>
+        <div>
+            <h2 id="recording-title">Запись разговора</h2>
+            <p class="card-subtitle">Аудио текущего приёма</p>
+        </div>
+    </div>
+
+    <div class="recording-visual" aria-hidden="true">
+        <span class="recording-orb"></span>
+        <div class="recording-lines">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <div
+        id="recording-timer"
+        class="recording-timer"
+        aria-live="off"
+    >
+        00:00
+    </div>
+
+    <p class="recording-hint">
+        Перед началом убедитесь, что микрофон подключён
+        и разговор можно записывать
+    </p>
+
+    <button
+        id="record-button"
+        class="button button-record"
+        type="button"
+    >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" fill="currentColor"/>
+        </svg>
+        Начать запись
+    </button>
+
+    <div class="recording-footer">
+        <span class="mini-dot"></span>
+        <span>Запись сохраняется в браузере</span>
+    </div>
+</section>

@@ -1,0 +1,47 @@
+<!-- Распознанный текст -->
+<section
+    class="card transcription-card"
+    aria-labelledby="transcription-title"
+>
+    <div class="card-heading">
+        <div
+            class="section-icon section-icon-muted"
+            aria-hidden="true"
+        >
+            <span>Т</span>
+        </div>
+        <div>
+            <h2 id="transcription-title">Распознанный текст</h2>
+            <p class="card-subtitle">
+                Проверьте и отредактируйте результат
+            </p>
+        </div>
+    </div>
+
+    <div id="transcription" contenteditable="true">
+        Здесь появится распознанный текст
+    </div>
+
+    <p
+        id="transcription-status"
+        class="action-status"
+        aria-live="polite"
+    ></p>
+
+    <div class="button-row">
+        <button
+            id="transcribe-button"
+            class="button button-secondary"
+            type="button"
+        >
+            Распознать аудио
+        </button>
+        <button
+            id="copy-transcription-button"
+            class="button button-secondary"
+            type="button"
+        >
+            Копировать текст
+        </button>
+    </div>
+</section>

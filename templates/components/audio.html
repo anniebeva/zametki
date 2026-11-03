@@ -1,0 +1,53 @@
+<!-- Прослушивание аудио -->
+<section
+    class="card audio-card"
+    aria-labelledby="audio-title"
+>
+    <div class="card-heading">
+        <div
+            class="section-icon section-icon-muted"
+            aria-hidden="true"
+        >
+            <svg viewBox="0 0 24 24" fill="none">
+                <path
+                    d="M4 10v4m4-8v12m4-15v18m4-14v10m4-7v4"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                />
+            </svg>
+        </div>
+        <div>
+            <h2 id="audio-title">Аудиозапись</h2>
+            <p class="card-subtitle">Прослушивание и проверка</p>
+        </div>
+    </div>
+
+    <audio id="audio-playback" controls hidden></audio>
+
+    <div class="empty-state">
+        <div class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path
+                    d="M8 5.5v13l10-6.5-10-6.5Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                />
+            </svg>
+        </div>
+        <p class="empty-title">Аудио появится здесь</p>
+        <p class="empty-description">
+            После записи можно будет прослушать разговор
+            и сверить его с распознанным текстом
+        </p>
+    </div>
+
+    <button
+        id="restore-audio-button"
+        class="button button-secondary button-full"
+        type="button"
+    >
+        Восстановить сохранённое аудио
+    </button>
+</section>
