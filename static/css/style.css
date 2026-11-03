@@ -273,6 +273,10 @@ h2 {
         color 150ms ease;
 }
 
+.button-row {
+    margin-top: auto;
+}
+
 .button-primary {
     background: var(--primary);
     color: white;
@@ -797,12 +801,13 @@ textarea.field-control {
 /* Free medical note */
 
 #medical-note {
+    margin-top: 24px;
     min-height: 260px;
-    margin-top: 14px;
     resize: vertical;
 }
 
 #structured-note {
+    margin-top: 24px;
     display: flex;
     flex-direction: column;
     gap: 20px;

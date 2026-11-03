@@ -35,6 +35,7 @@ import {
     loadTemplates,
     loadTemplateSchema,
     renderTemplateForm,
+    fillTemplateForm,
 } from "./templates.js";
 
 import { createMedicalNoteController } from "./medical-note.js";
@@ -67,6 +68,9 @@ const transcriptionStatus = document.getElementById("transcription-status");
 
 const templateSelect = document.getElementById("template-select");
 const templateStatus = document.getElementById("template-status");
+const fillTemplateButton = document.getElementById(
+    "fill-template-button",
+);
 
 const structuredNote = document.getElementById("structured-note");
 
@@ -618,6 +622,124 @@ async function transcribeCurrentVisit() {
     });
 }
 
+async function fillCurrentTemplate() {
+    if (!sessionId || !visitActive) {
+        setActionStatus(
+            templateFormStatus,
+            "Сначала начните приём",
+            "error",
+        );
+        return;
+    }
+
+    const templateId = templateSelect.value;
+
+    if (!templateId || activeTemplateId !== templateId) {
+        setActionStatus(
+            templateFormStatus,
+            "Сначала выберите шаблон",
+            "error",
+        );
+        return;
+    }
+
+    const transcriptionText = getTranscriptionText();
+
+    if (!transcriptionText) {
+        setActionStatus(
+            templateFormStatus,
+            "Сначала получите транскрипцию",
+            "error",
+        );
+        return;
+    }
+
+    const hasExistingData = Object.values(
+        collectTemplateData(),
+    ).some((value) => value !== "");
+
+    if (
+        hasExistingData &&
+        !window.confirm(
+            "AI-заполнение заменит текущие значения в форме. Продолжить?",
+        )
+    ) {
+        return;
+    }
+
+    const currentSessionId = sessionId;
+
+    fillTemplateButton.disabled = true;
+    setActionStatus(
+        templateFormStatus,
+        "AI заполняет форму…",
+    );
+
+    try {
+        // Сохраняем текущие значения до начала запроса
+        clearTimeout(templateSaveTimeout);
+        await saveTemplateData(templateId);
+
+        const response = await fetch("/api/fill-template", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                template_id: templateId,
+                transcription: transcriptionText,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+
+            throw new Error(
+                errorData.detail ||
+                `Ошибка заполнения формы: ${response.status}`,
+            );
+        }
+
+        const result = await response.json();
+
+        // Проверяем, что за время запроса пользователь не сменил приём или шаблон
+        if (
+            sessionId !== currentSessionId ||
+            !visitActive ||
+            templateSelect.value !== templateId ||
+            activeTemplateId !== templateId
+        ) {
+            return;
+        }
+
+        if (
+            result.template_id !== templateId ||
+            !result.data ||
+            typeof result.data !== "object"
+        ) {
+            throw new Error("Сервер вернул некорректные данные");
+        }
+
+        fillTemplateForm(result.data, structuredNote);
+
+        setActionStatus(
+            templateFormStatus,
+            "Форма заполнена. Проверьте значения перед использованием.",
+            "success",
+        );
+    } catch (error) {
+        console.error("Не удалось заполнить форму:", error);
+
+        setActionStatus(
+            templateFormStatus,
+            error.message || "Не удалось заполнить форму",
+            "error",
+        );
+    } finally {
+        fillTemplateButton.disabled = false;
+    }
+}
+
 async function copyText(
     text,
     button,
@@ -675,6 +797,10 @@ startVisitButton.addEventListener("click", async () => {
 
 templateSelect.addEventListener("change", () => {
     void renderSelectedTemplate();
+});
+
+fillTemplateButton.addEventListener("click", async () => {
+    await fillCurrentTemplate();
 });
 
 recordButton.addEventListener("click", async () => {

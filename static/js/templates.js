@@ -133,3 +133,25 @@ export function renderTemplateForm(schema, container) {
 
     container.replaceChildren(fragment);
 }
+
+export function fillTemplateForm(data, container) {
+    for (const [fieldId, value] of Object.entries(data)) {
+        const input = Array.from(
+            container.querySelectorAll(".field-control"),
+        ).find((field) => field.name === fieldId);
+
+        if (!input) {
+            continue;
+        }
+
+        input.value = value ?? "";
+
+        input.dispatchEvent(
+            new Event("input", { bubbles: true }),
+        );
+
+        input.dispatchEvent(
+            new Event("change", { bubbles: true }),
+        );
+    }
+}

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 TEMPLATES_DATA_DIR = Path("templates_data/medical")
 
@@ -41,7 +41,7 @@ def load_template_schema(template_id: str):
     return schema
 
 
-@router.get("/api/templates")
+@router.get("/templates")
 def get_templates():
     """Return available medical note templates"""
     available_templates = []
@@ -67,7 +67,7 @@ def get_templates():
     return {"templates": available_templates}
 
 
-@router.get("/api/templates/{template_id}")
+@router.get("/templates/{template_id}")
 def get_template(template_id: str):
     """Return a complete medical template schema"""
     return load_template_schema(template_id)
